@@ -1,64 +1,48 @@
-from dataclasses import dataclass, field
+import sqlite3
+from pathlib import Path
+from typing import TypedDict, List, Dict, Any, Optional
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 
-@dataclass
-class AgentState:
-
+class AgentState(TypedDict):
     question: str
+    query_type: Optional[str]
+    messages: List[Dict[str, Any]]
+    tool_calls: List[Dict[str, Any]]
+    tool_results: List[Dict[str, Any]]
+    final_answer: str
+    error: Optional[str]
+    step_count: int
+    retry_count: int
+    max_retries: int
+    fix_valid: bool
+    validation_feedback: Optional[str]
+    investigated_files: List[str]
+    active_symbols: List[str]
+    debug_notes: List[str]
+    # v7a: Context cross-checking fields
+    context_verified: bool
+    context_confidence: float
+    verification_notes: Optional[str]
 
-    messages: list[dict] = field(
-        default_factory=list
-    )
 
-    tool_calls: list[dict] = field(
-        default_factory=list
-    )
+class SessionManager:
+    """
+    Manages persistent SQLite-backed checkpoints for multi-turn debugging sessions.
+    Guarantees session durability across process restarts.
+    """
 
-    tool_results: list[dict] = field(
-        default_factory=list
-    )
+    def __init__(self, db_path: str = "data/sessions.db"):
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        self._checkpointer = SqliteSaver(self.conn)
 
-    final_answer: str = ""
+    def get_checkpointer(self) -> SqliteSaver:
+        """Returns the active SqliteSaver instance."""
+        return self._checkpointer
 
-    error: str | None = None
-
-    def add_message(
-        self,
-        message: dict
-    ) -> None:
-
-        self.messages.append(
-            message
-        )
-
-    def add_tool_call(
-        self,
-        tool_call: dict
-    ) -> None:
-
-        self.tool_calls.append(
-            tool_call
-        )
-
-    def add_tool_result(
-        self,
-        tool_result: dict
-    ) -> None:
-
-        self.tool_results.append(
-            tool_result
-        )
-
-    def set_final_answer(
-        self,
-        answer: str
-    ) -> None:
-
-        self.final_answer = answer
-
-    def set_error(
-        self,
-        error: str
-    ) -> None:
-
-        self.error = error
+    @staticmethod
+    def get_thread_config(thread_id: str) -> dict:
+        """Returns standard LangGraph configuration dictionary for a given thread_id."""
+        return {"configurable": {"thread_id": thread_id}}
