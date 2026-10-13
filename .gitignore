@@ -1,7 +1,7 @@
-# Python
+# Byte-compiled / optimized files
 __pycache__/
 *.py[cod]
-*.pyo
+*$py.class
 
 # Virtual environments
 .venv/
@@ -11,25 +11,15 @@ env/
 # Environment variables
 .env
 
-# ChromaDB / local vector database
+# SQLite persistent sessions & local databases
+data/sessions.db
+data/sessions.db*
+*.db
+*.sqlite3
+
+# Vector store index
 vector_store/
 
-# Jupyter
-.ipynb_checkpoints/
-
-# Testing / coverage
+# Cache directories
 .pytest_cache/
-.coverage
-htmlcov/
-
-# IDE
-.vscode/
-.idea/
-
-# OS / temporary files
-.DS_Store
-Thumbs.db
-~$*
-
-# Logs
-*.log
+.ipynb_checkpoints/

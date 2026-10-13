@@ -97,3 +97,26 @@ codebase-debugging-agent/
 | **`middleware/guardrails.py`** | Matches your Stage 12 patch (confirmation before destructive changes) |
 | **`evaluation/ragas_eval.py`** | Matches your Stage 13 patch (RAGAS evaluation) |
 | **`docker/`** | Separate folder keeps deployment config isolated from app logic |
+
+
+# Autonomous Codebase Debugging Agent
+
+A stateful codebase debugging agent built with **LangGraph**, Python **AST structural chunking**, and local LLMs via **Ollama**.
+
+## Architecture & Workflow
+
+The agent uses a cyclic LangGraph state machine rather than a simple loop:
+
+1. **Intent Classification**: Routes queries to AST symbol search (`code_search`) or markdown/doc search (`doc_search`).
+2. **Tool Execution**: Retrieves structural code chunks (functions, classes, line numbers) or setup files.
+3. **Context Cross-Checking**: Evaluates semantic alignment and keyword coverage between retrieved snippets and the user query before synthesis.
+4. **Fix Validation Critic**: Parses proposed Python code snippets with `ast.parse`. Syntax errors trigger an automated reflection loop that supplies tracebacks back to the LLM for correction.
+5. **Session Memory**: Uses SQLite checkpointing (`SqliteSaver`) to retain investigated files, active symbols, and debugging notes across turns.
+
+## Setup
+
+1. **Clone and create a virtual environment**:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
