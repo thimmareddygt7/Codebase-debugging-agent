@@ -1,4 +1,6 @@
 from langgraph.graph import StateGraph, START, END
+from src.config import settings
+from src.observability import trace_run
 from src.agent.memory import AgentState, SessionManager
 from src.agent.nodes import (
     classify_intent_node,
@@ -38,7 +40,7 @@ def create_agent_graph():
         }
     )
 
-    # NEW: Tools output flows through context cross-checking before re-invoking LLM
+    # Tools output flows through context cross-checking before re-invoking LLM
     workflow.add_edge("tools", "cross_check_context")
     workflow.add_edge("cross_check_context", "llm")
 
@@ -60,21 +62,43 @@ def create_agent_graph():
 agent_graph = create_agent_graph()
 
 
+@trace_run(name="ask_codebase_agent", run_type="chain", tags=["debugging-agent"])
 def ask_codebase_agent(
     question: str,
     thread_id: str = "default_session",
     max_retries: int = 2
 ) -> dict:
-    """Runs a question through the verified debugging agent state machine."""
+    """Runs a question through the verified debugging agent state machine with LangSmith tracing."""
+    from src.observability import is_tracing_enabled, get_project_dashboard_url
+
+    print("\n" + "#" * 80)
+    print(">>> [CODEBASE DEBUGGING AGENT] PIPELINE INVOCATION STARTED")
+    print(f"    Session Thread ID: {thread_id}")
+    print(f"    User Query:        '{question}'")
+    print(f"    LLM Engine:        {settings.MODEL_PROVIDER} ({settings.GROQ_MODEL if settings.MODEL_PROVIDER == 'groq' else settings.OLLAMA_MODEL})")
+    print(f"    LangSmith Tracing: {'ACTIVE (Streaming traces live)' if is_tracing_enabled() else 'DISABLED'}")
+    if is_tracing_enabled():
+        print(f"    Live Dashboard:    {get_project_dashboard_url()}")
+    print("#" * 80)
+
     config = session_manager.get_thread_config(thread_id)
+    config["tags"] = ["codebase-agent", settings.MODEL_PROVIDER]
+    config["metadata"] = {
+        "thread_id": thread_id,
+        "model": settings.GROQ_MODEL if settings.MODEL_PROVIDER == "groq" else settings.OLLAMA_MODEL,
+        "provider": settings.MODEL_PROVIDER,
+    }
+    config["run_name"] = f"DebugSession:{thread_id}"
+
     current_snapshot = agent_graph.get_state(config)
 
     base_system_prompt = (
         "You are an expert AI Codebase Debugging Agent. "
         "Ground all answers strictly on retrieved code context. "
+        "When asked about codebase structure, functions, classes, bugs, or architecture, "
+        "ALWAYS first call your 'code_search' or 'doc_search' tool to inspect the real implementation before answering. "
         "When fixing bugs or proposing code changes, provide valid, clean, and executable "
-        "Python code wrapped in ```python ... ``` markdown blocks. "
-        "Always use your tools ('code_search', 'doc_search') before answering."
+        "Python code wrapped in ```python ... ``` markdown blocks."
     )
 
     if not current_snapshot.values:
@@ -134,4 +158,17 @@ def ask_codebase_agent(
             "verification_notes": None,
         }
 
-    return agent_graph.invoke(initial_input, config=config)
+    final_state = agent_graph.invoke(initial_input, config=config)
+
+    print("#" * 80)
+    print("<<< [CODEBASE DEBUGGING AGENT] PIPELINE EXECUTION COMPLETED")
+    print(f"    Session Thread:    {thread_id}")
+    print(f"    Steps Executed:    {final_state.get('step_count', 0)}")
+    print(f"    AST Retries:       {final_state.get('retry_count', 0)}")
+    print(f"    Context Verified:  {final_state.get('context_verified', False)}")
+    print(f"    Final Answer Size: {len(final_state.get('final_answer', ''))} characters")
+    if is_tracing_enabled():
+        print(f"    Trace Logged at:   {get_project_dashboard_url()}")
+    print("#" * 80 + "\n")
+
+    return final_state

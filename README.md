@@ -101,7 +101,7 @@ codebase-debugging-agent/
 
 # Autonomous Codebase Debugging Agent
 
-A stateful codebase debugging agent built with **LangGraph**, Python **AST structural chunking**, and local LLMs via **Ollama**.
+A stateful codebase debugging agent built with **LangGraph**, Python **AST structural chunking**, and ultra-fast LLMs via **Groq LPUs** (`llama-3.3-70b-versatile`) with optional local **Ollama** support.
 
 ## Architecture & Workflow
 

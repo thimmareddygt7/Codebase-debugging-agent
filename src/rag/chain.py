@@ -1,7 +1,8 @@
 from src.retrieval.retriever import CodeRetriever
 from src.rag.context_builder import CodeContextBuilder
-from src.rag.llm import OllamaLLM
+from src.rag.llm import get_llm
 from src.rag.citations import CitationBuilder
+from src.observability import trace_run
 
 
 class CodeRAGChain:
@@ -12,7 +13,7 @@ class CodeRAGChain:
 
         self.retriever = CodeRetriever()
         self.context_builder = CodeContextBuilder()
-        self.llm = OllamaLLM()
+        self.llm = get_llm()
         self.citation_builder = CitationBuilder()
 
         print("Code RAG chain initialized.")
@@ -44,6 +45,7 @@ Answer:
 
         return prompt
 
+    @trace_run(name="code_rag_ask", run_type="chain")
     def ask(
         self,
         question: str,

@@ -1,5 +1,6 @@
 from src.ingestion.embedder import CodeEmbedder
 from src.retrieval.vector_store import CodeVectorStore
+from src.observability import trace_run
 
 
 class CodeRetriever:
@@ -19,6 +20,7 @@ class CodeRetriever:
 
         print("Code retriever initialized.")
 
+    @trace_run(name="code_retriever_search", run_type="retriever")
     def search(
         self,
         query: str,
