@@ -8,8 +8,10 @@ from src.agent.tools import CodeSearchTool, DocSearchTool
 from src.agent.memory import AgentState
 from src.agent.validator import FixValidator
 from src.agent.context_verifier import ContextCrossChecker
+from src.guardrails import GuardrailManager
 
 # Initialize components
+guardrail_manager = GuardrailManager()
 code_search_tool = CodeSearchTool()
 doc_search_tool = DocSearchTool()
 fix_validator = FixValidator()
@@ -72,8 +74,12 @@ def execute_tool(tool_name: str, arguments: dict) -> str:
             )
             # Trim code snippets to keep token usage within Groq free limits
             for item in results:
-                if "code" in item and len(item["code"]) > 750:
-                    item["code"] = item["code"][:750] + "\n... [truncated for token efficiency]"
+                if "code" in item:
+                    item["code"] = guardrail_manager.redact(item["code"])
+                    if len(item["code"]) > 750:
+                        item["code"] = item["code"][:750] + "\n... [truncated for token efficiency]"
+                if "content" in item:
+                    item["content"] = guardrail_manager.redact(item["content"])
             print(f"       <- Tool Execution Succeeded: Retrieved {len(results)} relevant code chunk(s) (top_k={top_k})")
         elif tool_name == DocSearchTool.NAME:
             results = tool_instance.execute(
@@ -187,19 +193,19 @@ def _call_groq(messages: List[Dict[str, Any]], allow_tools: bool = True) -> Dict
         formatted_messages.append(item)
 
     model = settings.GROQ_MODEL
-    tools_param = tools_schema if allow_tools else None
-    tool_choice_param = "auto" if allow_tools else None
+    call_kwargs: Dict[str, Any] = {
+        "model": model,
+        "messages": formatted_messages,
+        "max_tokens": 800,
+    }
+    if allow_tools:
+        call_kwargs["tools"] = tools_schema
+        call_kwargs["tool_choice"] = "auto"
 
     print(f"       -> [GROQ DISPATCH] Sending request to Groq Cloud API...")
     print(f"          Model: {model} | Context Messages: {len(formatted_messages)} | Tools Enabled: {allow_tools} | max_tokens: 800")
     try:
-        completion = client.chat.completions.create(
-            model=model,
-            messages=formatted_messages,
-            tools=tools_param,
-            tool_choice=tool_choice_param,
-            max_tokens=800,
-        )
+        completion = client.chat.completions.create(**call_kwargs)
     except (groq.RateLimitError, groq.APIStatusError) as exc:
         is_quota_issue = (
             isinstance(exc, groq.RateLimitError) or
@@ -213,16 +219,13 @@ def _call_groq(messages: List[Dict[str, Any]], allow_tools: bool = True) -> Dict
         if is_quota_issue and settings.FALLBACK_MODEL and settings.FALLBACK_MODEL != model:
             print(f"    -> AUTO-RECOVERY: Switching to Fallback Engine: '{settings.FALLBACK_MODEL}'")
             print("*" * 80 + "\n")
-            completion = client.chat.completions.create(
-                model=settings.FALLBACK_MODEL,
-                messages=formatted_messages,
-                tools=tools_param,
-                tool_choice=tool_choice_param,
-                max_tokens=800,
-            )
+            fallback_kwargs = dict(call_kwargs)
+            fallback_kwargs["model"] = settings.FALLBACK_MODEL
+            completion = client.chat.completions.create(**fallback_kwargs)
         else:
             print("*" * 80 + "\n")
             raise
+
 
     usage = getattr(completion, "usage", None)
     if usage:
@@ -501,6 +504,8 @@ def finalize_node(state: AgentState) -> Dict[str, Any]:
 
     if not final_answer:
         return {"error": "No assistant response generated.", "final_answer": ""}
+
+    final_answer = guardrail_manager.redact(final_answer)
 
     debug_notes = list(state.get("debug_notes", []))
     summary_entry = f"Q: {state['question'][:60]}... -> Answered (Verified: {state.get('context_verified', False)})"

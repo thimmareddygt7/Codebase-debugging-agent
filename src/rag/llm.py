@@ -29,18 +29,26 @@ class GroqLLM:
         return self.chat(messages)
 
     def chat(self, messages: list) -> str:
-        """Sends chat completion request to Groq."""
+        """Sends chat completion request to Groq with rate-limit protection."""
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
+                max_tokens=800,
             )
             return response.choices[0].message.content or ""
-        except groq.RateLimitError:
-            if self.fallback_model and self.fallback_model != self.model:
+        except (groq.RateLimitError, groq.APIStatusError) as exc:
+            is_quota_issue = (
+                isinstance(exc, groq.RateLimitError) or
+                getattr(exc, "status_code", None) in (413, 429) or
+                "rate_limit_exceeded" in str(exc).lower() or
+                "request too large" in str(exc).lower()
+            )
+            if is_quota_issue and self.fallback_model and self.fallback_model != self.model:
                 response = self.client.chat.completions.create(
                     model=self.fallback_model,
                     messages=messages,
+                    max_tokens=800,
                 )
                 return response.choices[0].message.content or ""
             raise

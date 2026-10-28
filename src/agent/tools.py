@@ -1,6 +1,8 @@
-import os
 from pathlib import Path
 from src.retrieval.retriever import CodeRetriever
+from src.guardrails import FileSystemGuardrail, redact_secrets
+
+fs_guard = FileSystemGuardrail()
 
 
 class CodeSearchTool:
@@ -30,7 +32,7 @@ class CodeSearchTool:
                 "start_line": metadatas[i]["start_line"],
                 "end_line": metadatas[i]["end_line"],
                 "distance": distances[i],
-                "code": documents[i],
+                "code": redact_secrets(documents[i]),
             }
             for i in range(len(documents))
         ]
@@ -81,16 +83,27 @@ class DocSearchTool:
         self.doc_extensions = {".md", ".rst", ".txt", ".json", ".example"}
 
     def search(self, query: str) -> list[dict]:
-        """Performs simple keyword-based retrieval across documentation files."""
+        """Performs safe keyword-based retrieval across documentation files."""
         query_terms = [t.lower() for t in query.split() if len(t) > 2]
         matches = []
 
         for path in self.project_root.rglob("*"):
             if not path.is_file():
                 continue
+
+            # Filesystem Guardrail: Block protected paths (.git, credentials, live .env)
+            is_safe, _ = fs_guard.is_safe_read_path(path)
+            if not is_safe:
+                continue
+
+            # Block live .env strictly (only allow .env.example)
+            if path.name == ".env" or path.name.startswith(".env.") and not path.name.endswith(".example"):
+                continue
+
             if any(part in {".git", ".venv", "venv", "__pycache__", "vector_store"} for part in path.parts):
                 continue
-            if path.suffix.lower() in self.doc_extensions or path.name.startswith(".env"):
+
+            if path.suffix.lower() in self.doc_extensions:
                 try:
                     text = path.read_text(encoding="utf-8", errors="ignore")
                     lines = text.splitlines()
@@ -103,7 +116,7 @@ class DocSearchTool:
                             matches.append({
                                 "file_path": str(path),
                                 "line": idx,
-                                "content": snippet
+                                "content": redact_secrets(snippet)
                             })
                             if len(matches) >= 5:
                                 return matches

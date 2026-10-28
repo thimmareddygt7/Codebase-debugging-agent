@@ -120,3 +120,68 @@ The agent uses a cyclic LangGraph state machine rather than a simple loop:
    python -m venv .venv
    source .venv/bin/activate  # Windows: .venv\Scripts\activate
    pip install -r requirements.txt
+   ```
+
+2. **Configure environment variables**:
+   ```bash
+   cp .env.example .env
+   # Add your GROQ_API_KEY and optionally LANGCHAIN_API_KEY
+   ```
+
+3. **Run local FastAPI server**:
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+---
+
+## Docker Containerization
+
+The agent is fully containerized with production-grade security, persistent storage volumes, non-root user isolation (`appuser`), and built-in healthchecks.
+
+### Quickstart with Docker Compose (Recommended)
+
+1. **Start the API service**:
+   ```bash
+   docker compose up -d --build
+   ```
+   The FastAPI server will start at `http://localhost:8000` with interactive Swagger docs at `http://localhost:8000/docs`.
+
+2. **Run with offline local LLM (Ollama profile)**:
+   ```bash
+   docker compose --profile local-llm up -d
+   ```
+
+3. **View logs**:
+   ```bash
+   docker compose logs -f agent
+   ```
+
+4. **Stop the containers**:
+   ```bash
+   docker compose down
+   ```
+
+### Standalone Docker Commands
+
+1. **Build image**:
+   ```bash
+   docker build -t codebase-debugging-agent:latest .
+   ```
+
+2. **Run container with persistent volumes and .env**:
+   ```bash
+   docker run -d \
+     --name codebase-debugging-agent \
+     -p 8000:8000 \
+     --env-file .env \
+     -v $(pwd)/vector_store:/app/vector_store \
+     -v $(pwd)/data:/app/data \
+     codebase-debugging-agent:latest
+   ```
+
+3. **Check container health**:
+   ```bash
+   docker inspect --format='{{json .State.Health.Status}}' codebase-debugging-agent
+   # Output: "healthy"
+   ```

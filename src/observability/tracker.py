@@ -32,6 +32,18 @@ def get_project_dashboard_url() -> str:
     return f"https://smith.langchain.com/o/default/projects/p/{project}"
 
 
+from src.guardrails.secrets import redact_secrets
+
+
+def _sanitize_dict(data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not data or not isinstance(data, dict):
+        return {}
+    return {
+        k: redact_secrets(str(v)) if isinstance(v, str) else v
+        for k, v in data.items()
+    }
+
+
 def trace_run(
     name: Optional[str] = None,
     run_type: str = "chain",
@@ -39,17 +51,19 @@ def trace_run(
     metadata: Optional[Dict[str, Any]] = None,
 ):
     """
-    Safe decorator for tracing functions in LangSmith.
+    Safe decorator for tracing functions in LangSmith with automatic secret redaction.
     Gracefully falls back to direct execution if LangSmith is disabled or unavailable.
     """
     def decorator(func: Callable) -> Callable:
         if is_tracing_enabled() and traceable:
             try:
+                clean_tags = [redact_secrets(t) for t in (tags or [])]
+                clean_meta = _sanitize_dict(metadata)
                 return traceable(
                     name=name or func.__name__,
                     run_type=run_type,
-                    tags=tags or [],
-                    metadata=metadata or {},
+                    tags=clean_tags,
+                    metadata=clean_meta,
                 )(func)
             except Exception:
                 return func

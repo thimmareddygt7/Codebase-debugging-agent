@@ -20,6 +20,12 @@ data/sessions.db*
 # Vector store index
 vector_store/
 
+# Guardrails backups & audit logs
+data/backups/
+*.bak
+data/audit_log.jsonl
+data/fixes.json
+
 # Cache directories
 .pytest_cache/
 .ipynb_checkpoints/

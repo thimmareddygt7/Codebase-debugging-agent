@@ -1,1 +1,37 @@
-[]
+[
+  {
+    "id": "eval_001",
+    "question": "Where is CodebaseChunker defined in src/ingestion/chunker.py and how does it chunk functions?",
+    "ground_truth": "CodebaseChunker is defined in src/ingestion/chunker.py spanning lines 19-161. It chunks functions via chunk_file and an internal recursive _traverse function over ast.AST nodes. For ast.FunctionDef and ast.AsyncFunctionDef, it extracts lines using decorator start boundaries, slices code text, and stores metadata in a CodeChunk dataclass.",
+    "relevant_files": ["src/ingestion/chunker.py"],
+    "expected_symbols": ["CodebaseChunker", "CodebaseChunker.chunk_file", "_traverse", "CodeChunk"]
+  },
+  {
+    "id": "eval_002",
+    "question": "How does the context cross-checker verify retrieved code snippets before synthesis?",
+    "ground_truth": "ContextCrossChecker is defined in src/agent/context_verifier.py. It extracts text from tool results and runs verify_relevance to compute an alignment score between 0.0 and 1.0. If the score is below threshold (0.35), it flags the context as unverified and injects a guardrail warning into the prompt to prevent hallucinations.",
+    "relevant_files": ["src/agent/context_verifier.py"],
+    "expected_symbols": ["ContextCrossChecker", "ContextCrossChecker.verify_relevance", "ContextCrossChecker.extract_search_documents"]
+  },
+  {
+    "id": "eval_003",
+    "question": "How does FixValidator ensure proposed code changes are syntactically valid Python?",
+    "ground_truth": "FixValidator in src/agent/validator.py extracts markdown python code blocks using regex. It calls validate_code_syntax which runs Python's native ast.parse(). If a SyntaxError occurs, it reports the exact line number and error message, triggering an agent self-correction retry loop.",
+    "relevant_files": ["src/agent/validator.py"],
+    "expected_symbols": ["FixValidator", "FixValidator.extract_python_code_blocks", "FixValidator.validate_code_syntax", "FixValidator.evaluate_proposed_fix"]
+  },
+  {
+    "id": "eval_004",
+    "question": "How does the Chroma vector store initialize and search code embeddings?",
+    "ground_truth": "CodeVectorStore in src/retrieval/vector_store.py connects to persistent ChromaDB at vector_store directory. It provides add_chunks to embed and store code chunks with metadatas, and search to query top_k nearest neighbors by cosine/L2 distance.",
+    "relevant_files": ["src/retrieval/vector_store.py"],
+    "expected_symbols": ["CodeVectorStore", "CodeVectorStore.search", "CodeVectorStore.add_chunks"]
+  },
+  {
+    "id": "eval_005",
+    "question": "What are the core states and workflow routing steps in create_agent_graph?",
+    "ground_truth": "create_agent_graph in src/agent/graph.py compiles a LangGraph StateGraph over AgentState. Nodes include classify_intent, llm, tools, cross_check_context, validate_fix, and finalize, with conditional routing for tool execution (should_continue_tools) and AST critic retries (should_retry_or_finish).",
+    "relevant_files": ["src/agent/graph.py", "src/agent/nodes.py"],
+    "expected_symbols": ["create_agent_graph", "ask_codebase_agent", "AgentState"]
+  }
+]
