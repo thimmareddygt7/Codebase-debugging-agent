@@ -1,5 +1,5 @@
 from src.retrieval.retriever import CodeRetriever
-from src.rag.context_builder import CodeContextBuilder
+from src.rag.context_builder import ContextBuilder
 from src.rag.llm import get_llm
 from src.rag.citations import CitationBuilder
 from src.observability import trace_run
@@ -12,7 +12,7 @@ class CodeRAGChain:
         print("Initializing Code RAG chain...")
 
         self.retriever = CodeRetriever()
-        self.context_builder = CodeContextBuilder()
+        self.context_builder = ContextBuilder()
         self.llm = get_llm()
         self.citation_builder = CitationBuilder()
 

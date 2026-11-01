@@ -1,4 +1,4 @@
-class CodeContextBuilder:
+class ContextBuilder:
 
     def build_context(self, results) -> str:
 

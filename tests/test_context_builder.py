@@ -3,7 +3,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.retrieval.retriever import CodeRetriever
-from src.rag.context_builder import CodeContextBuilder
+from src.rag.context_builder import ContextBuilder
 
 
 # --------------------------------------------------
@@ -43,7 +43,7 @@ results = retriever.search(
 # STEP 4: BUILD CONTEXT
 # --------------------------------------------------
 
-context_builder = CodeContextBuilder()
+context_builder = ContextBuilder()
 
 context = context_builder.build_context(
     results
