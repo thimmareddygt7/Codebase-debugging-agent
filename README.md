@@ -1,3 +1,12 @@
+﻿---
+title: Codebase Debugging Agent
+emoji: 🐞
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 8000
+pinned: false
+---
 # Codebase Debugging Agent
 
 An AI-powered codebase debugging agent utilizing RAG (Retrieval-Augmented Generation), LangGraph, and guardrails to analyze, diagnose, and fix bugs in target repositories.
@@ -6,85 +15,85 @@ An AI-powered codebase debugging agent utilizing RAG (Retrieval-Augmented Genera
 
 ```
 codebase-debugging-agent/
-│
-├── app/
-│   ├── __init__.py
-│   ├── main.py                      # FastAPI entrypoint (routes, startup)
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── routes.py                # POST /ask, /debug, /health endpoints
-│   │   └── schemas.py               # Pydantic request/response models
-│   └── middleware/
-│       ├── __init__.py
-│       └── guardrails.py            # Confirmation gate before destructive fixes
-│
-├── src/
-│   ├── __init__.py
-│   │
-│   ├── ingestion/
-│   │   ├── __init__.py
-│   │   ├── loader.py                # Load/clone target codebase
-│   │   ├── chunker.py               # Chunk by function/class, not paragraph
-│   │   └── embedder.py              # Generate + store embeddings
-│   │
-│   ├── retrieval/
-│   │   ├── __init__.py
-│   │   ├── vector_store.py          # Vector DB setup (Chroma/Pinecone/FAISS)
-│   │   ├── retriever.py             # Basic + hybrid retrieval logic
-│   │   └── reranker.py              # Reranking retrieved chunks
-│   │
-│   ├── rag/
-│   │   ├── __init__.py
-│   │   ├── chain.py                 # Core RAG pipeline (question -> retrieve -> generate)
-│   │   ├── citations.py             # File-level citation formatting
-│   │   ├── crag.py                  # Corrective RAG - cross-check retrieved context
-│   │   └── self_rag.py              # Self-RAG - fact-check own answers
-│   │
-│   ├── agent/
-│   │   ├── __init__.py
-│   │   ├── graph.py                 # LangGraph state machine definition
-│   │   ├── nodes.py                 # Individual graph nodes (diagnose, search, fix, verify)
-│   │   ├── tools.py                 # Code search tool, doc search tool, etc.
-│   │   ├── memory.py                # Short-term + long-term memory setup
-│   │   └── workflows/
-│   │       ├── conditional.py       # Error-type branching logic
-│   │       └── iterative.py         # Retry/loop logic for wrong fixes
-│   │
-│   ├── evaluation/
-│   │   ├── __init__.py
-│   │   ├── ragas_eval.py            # Faithfulness, relevance scoring
-│   │   └── test_queries.py          # Sample Q&A pairs for evaluation
-│   │
-│   └── config.py                    # Model names, chunk sizes, env settings
-│
-├── tests/
-│   ├── __init__.py
-│   ├── test_retrieval.py
-│   ├── test_agent.py
-│   └── test_api.py
-│
-├── notebooks/
-│   ├── 01_codebase_exploration.ipynb
-│   ├── 02_chunking_experiments.ipynb
-│   ├── 03_rag_baseline.ipynb
-│   └── 04_agent_development.ipynb
-│
-├── data/
-│   ├── .gitkeep                     # Target codebase cloned here (gitignored)
-│   └── eval_dataset.json            # Evaluation questions + expected answers
-│
-├── vector_store/
-│   └── .gitkeep                     # Persisted vector DB (gitignored)
-│
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml           # App + vector DB services together
-│
-├── .env.example                     # API keys template (OpenAI/Groq/etc.)
-├── .gitignore
-├── requirements.txt
-├── README.md
-└── LICENSE
+â”‚
+â”œâ”€â”€ app/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ main.py                      # FastAPI entrypoint (routes, startup)
+â”‚   â”œâ”€â”€ api/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ routes.py                # POST /ask, /debug, /health endpoints
+â”‚   â”‚   â””â”€â”€ schemas.py               # Pydantic request/response models
+â”‚   â””â”€â”€ middleware/
+â”‚       â”œâ”€â”€ __init__.py
+â”‚       â””â”€â”€ guardrails.py            # Confirmation gate before destructive fixes
+â”‚
+â”œâ”€â”€ src/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚
+â”‚   â”œâ”€â”€ ingestion/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ loader.py                # Load/clone target codebase
+â”‚   â”‚   â”œâ”€â”€ chunker.py               # Chunk by function/class, not paragraph
+â”‚   â”‚   â””â”€â”€ embedder.py              # Generate + store embeddings
+â”‚   â”‚
+â”‚   â”œâ”€â”€ retrieval/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ vector_store.py          # Vector DB setup (Chroma/Pinecone/FAISS)
+â”‚   â”‚   â”œâ”€â”€ retriever.py             # Basic + hybrid retrieval logic
+â”‚   â”‚   â””â”€â”€ reranker.py              # Reranking retrieved chunks
+â”‚   â”‚
+â”‚   â”œâ”€â”€ rag/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ chain.py                 # Core RAG pipeline (question -> retrieve -> generate)
+â”‚   â”‚   â”œâ”€â”€ citations.py             # File-level citation formatting
+â”‚   â”‚   â”œâ”€â”€ crag.py                  # Corrective RAG - cross-check retrieved context
+â”‚   â”‚   â””â”€â”€ self_rag.py              # Self-RAG - fact-check own answers
+â”‚   â”‚
+â”‚   â”œâ”€â”€ agent/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ graph.py                 # LangGraph state machine definition
+â”‚   â”‚   â”œâ”€â”€ nodes.py                 # Individual graph nodes (diagnose, search, fix, verify)
+â”‚   â”‚   â”œâ”€â”€ tools.py                 # Code search tool, doc search tool, etc.
+â”‚   â”‚   â”œâ”€â”€ memory.py                # Short-term + long-term memory setup
+â”‚   â”‚   â””â”€â”€ workflows/
+â”‚   â”‚       â”œâ”€â”€ conditional.py       # Error-type branching logic
+â”‚   â”‚       â””â”€â”€ iterative.py         # Retry/loop logic for wrong fixes
+â”‚   â”‚
+â”‚   â”œâ”€â”€ evaluation/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ ragas_eval.py            # Faithfulness, relevance scoring
+â”‚   â”‚   â””â”€â”€ test_queries.py          # Sample Q&A pairs for evaluation
+â”‚   â”‚
+â”‚   â””â”€â”€ config.py                    # Model names, chunk sizes, env settings
+â”‚
+â”œâ”€â”€ tests/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ test_retrieval.py
+â”‚   â”œâ”€â”€ test_agent.py
+â”‚   â””â”€â”€ test_api.py
+â”‚
+â”œâ”€â”€ notebooks/
+â”‚   â”œâ”€â”€ 01_codebase_exploration.ipynb
+â”‚   â”œâ”€â”€ 02_chunking_experiments.ipynb
+â”‚   â”œâ”€â”€ 03_rag_baseline.ipynb
+â”‚   â””â”€â”€ 04_agent_development.ipynb
+â”‚
+â”œâ”€â”€ data/
+â”‚   â”œâ”€â”€ .gitkeep                     # Target codebase cloned here (gitignored)
+â”‚   â””â”€â”€ eval_dataset.json            # Evaluation questions + expected answers
+â”‚
+â”œâ”€â”€ vector_store/
+â”‚   â””â”€â”€ .gitkeep                     # Persisted vector DB (gitignored)
+â”‚
+â”œâ”€â”€ docker/
+â”‚   â”œâ”€â”€ Dockerfile
+â”‚   â””â”€â”€ docker-compose.yml           # App + vector DB services together
+â”‚
+â”œâ”€â”€ .env.example                     # API keys template (OpenAI/Groq/etc.)
+â”œâ”€â”€ .gitignore
+â”œâ”€â”€ requirements.txt
+â”œâ”€â”€ README.md
+â””â”€â”€ LICENSE
 ```
 
 ## Quick Notes on Key Folders
@@ -92,8 +101,8 @@ codebase-debugging-agent/
 | Folder / Component | Why it's separated this way |
 | --- | --- |
 | **`app/` vs `src/`** | `app/` = FastAPI/web layer only; `src/` = all core logic (reusable, testable independent of the API) |
-| **`rag/` vs `agent/`** | Keeps your "basic RAG" (v1-v2 from the build plan) cleanly separate from "agentic upgrades" (v4-v7) — mirrors your actual build stages |
-| **`rag/crag.py` + `rag/self_rag.py`** | Dedicated files for the CRAG/Self-RAG upgrade stage — easy to point to in interviews |
+| **`rag/` vs `agent/`** | Keeps your "basic RAG" (v1-v2 from the build plan) cleanly separate from "agentic upgrades" (v4-v7) â€” mirrors your actual build stages |
+| **`rag/crag.py` + `rag/self_rag.py`** | Dedicated files for the CRAG/Self-RAG upgrade stage â€” easy to point to in interviews |
 | **`middleware/guardrails.py`** | Matches your Stage 12 patch (confirmation before destructive changes) |
 | **`evaluation/ragas_eval.py`** | Matches your Stage 13 patch (RAGAS evaluation) |
 | **`docker/`** | Separate folder keeps deployment config isolated from app logic |
@@ -185,3 +194,4 @@ The agent is fully containerized with production-grade security, persistent stor
    docker inspect --format='{{json .State.Health.Status}}' codebase-debugging-agent
    # Output: "healthy"
    ```
+

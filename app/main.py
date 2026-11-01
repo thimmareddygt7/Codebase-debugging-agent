@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.api.routes import router as api_router
 from app.middleware.guardrails import APIGuardrailsMiddleware
@@ -44,13 +44,7 @@ app.include_router(api_router)
 
 @app.get("/", tags=["Root"])
 def root():
-    return {
-        "service": "Codebase Debugging Agent API",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "health": "/health",
-        "ready": "/ready"
-    }
+    return RedirectResponse(url="/docs")
 
 
 if __name__ == "__main__":
