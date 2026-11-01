@@ -38,7 +38,7 @@ def test_guardrails():
     # 1. Human Approval Before Code Changes (Critical Guardrail 1)
     # -------------------------------------------------------------
     print("\n[GUARDRAIL 1/8] Human Approval Before Code Changes:")
-    test_file = settings.PROJECT_ROOT / "testings" / "sample_target_file.py"
+    test_file = settings.PROJECT_ROOT / "tests" / "sample_target_file.py"
     test_file.write_text("# Initial source code\ndef compute():\n    return 42\n", encoding="utf-8")
 
     # Simulate denial callback

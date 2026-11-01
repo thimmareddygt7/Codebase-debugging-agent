@@ -70,7 +70,7 @@ def run_api_tests():
     print("   [PASS] /index/status reports live vector store records.")
 
     # 6. POST /index
-    res_idx = client.post("/index", json={"target_path": "testings", "reset_index": False, "async_mode": True})
+    res_idx = client.post("/index", json={"target_path": "tests", "reset_index": False, "async_mode": True})
     print(f"6. POST /index -> Status: {res_idx.status_code}, Message: {res_idx.json()['message']}")
     assert res_idx.status_code == 200
     print("   [PASS] /index triggers background indexing cleanly.")
@@ -81,13 +81,13 @@ def run_api_tests():
     print("\n--- STAGE 3: WORKFLOW & FIX PROPOSALS ---")
 
     # Create a scratch dummy file for safe patch testing
-    scratch_file = Path("testings/temp_test_patch.py")
+    scratch_file = Path("tests/temp_test_patch.py")
     scratch_file.write_text("# Initial code version 1\ndef calculate_sum(a, b):\n    return a - b  # Bug!\n", encoding="utf-8")
 
     # 7. POST /fix/propose
     propose_payload = {
         "problem_description": "calculate_sum subtracts instead of adding",
-        "target_file": "testings/temp_test_patch.py",
+        "target_file": "tests/temp_test_patch.py",
         "new_content": "# Initial code version 1\ndef calculate_sum(a, b):\n    return a + b  # Fixed!\n",
         "rationale": "Fix subtraction operator to addition operator in calculate_sum"
     }
@@ -163,7 +163,7 @@ def run_api_tests():
     print("    [PASS] Destructive command strictly blocked by allowlist.")
 
     # 15. POST /tests/run with safe allowlisted command
-    res_test_run = client.post("/tests/run", json={"test_command": "pytest testings/test_guardrails.py"})
+    res_test_run = client.post("/tests/run", json={"test_command": "pytest tests/test_guardrails.py"})
     print(f"15. POST /tests/run -> Status: {res_test_run.status_code}, Outcome: {'PASSED' if res_test_run.json()['success'] else 'FAILED'}")
     assert res_test_run.status_code == 200
     test_run_id = res_test_run.json()["test_run_id"]

@@ -24,7 +24,7 @@ class Outer:
             return nested_helper()
 '''
 
-test_file_path = "testings/sample_nested_code.py"
+test_file_path = "tests/sample_nested_code.py"
 with open(test_file_path, "w", encoding="utf-8") as f:
     f.write(sample_code)
 

@@ -158,7 +158,7 @@ class FixRejectRequest(BaseModel):
 class FixApplyRequest(BaseModel):
     run_tests_command: Optional[str] = Field(
         default=None,
-        description="Optional safe test command (e.g. 'pytest testings/test_guardrails.py') to execute post-application."
+        description="Optional safe test command (e.g. 'pytest tests/test_guardrails.py') to execute post-application."
     )
 
 
@@ -181,7 +181,7 @@ class FixRollbackResponse(BaseModel):
 
 class TestRunRequest(BaseModel):
     test_command: str = Field(
-        default="pytest testings/test_guardrails.py",
+        default="pytest tests/test_guardrails.py",
         description="Approved test command from safe allowlist."
     )
     timeout_seconds: int = Field(default=45, ge=5, le=180, description="Execution timeout limit.")

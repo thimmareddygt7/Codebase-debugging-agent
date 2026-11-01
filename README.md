@@ -1,4 +1,4 @@
-﻿---
+---
 title: Codebase Debugging Agent
 emoji: 🐞
 colorFrom: blue
@@ -9,118 +9,156 @@ pinned: false
 ---
 # Codebase Debugging Agent
 
-An AI-powered codebase debugging agent utilizing RAG (Retrieval-Augmented Generation), LangGraph, and guardrails to analyze, diagnose, and fix bugs in target repositories.
+An AI-powered codebase debugging agent utilizing RAG (Retrieval-Augmented Generation), LangGraph cyclic state machines, and multi-layered guardrails to analyze, diagnose, and fix bugs in target repositories.
 
 ## Directory Structure
 
 ```
 codebase-debugging-agent/
-â”‚
-â”œâ”€â”€ app/
-â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”œâ”€â”€ main.py                      # FastAPI entrypoint (routes, startup)
-â”‚   â”œâ”€â”€ api/
-â”‚   â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”‚   â”œâ”€â”€ routes.py                # POST /ask, /debug, /health endpoints
-â”‚   â”‚   â””â”€â”€ schemas.py               # Pydantic request/response models
-â”‚   â””â”€â”€ middleware/
-â”‚       â”œâ”€â”€ __init__.py
-â”‚       â””â”€â”€ guardrails.py            # Confirmation gate before destructive fixes
-â”‚
-â”œâ”€â”€ src/
-â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”‚
-â”‚   â”œâ”€â”€ ingestion/
-â”‚   â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”‚   â”œâ”€â”€ loader.py                # Load/clone target codebase
-â”‚   â”‚   â”œâ”€â”€ chunker.py               # Chunk by function/class, not paragraph
-â”‚   â”‚   â””â”€â”€ embedder.py              # Generate + store embeddings
-â”‚   â”‚
-â”‚   â”œâ”€â”€ retrieval/
-â”‚   â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”‚   â”œâ”€â”€ vector_store.py          # Vector DB setup (Chroma/Pinecone/FAISS)
-â”‚   â”‚   â”œâ”€â”€ retriever.py             # Basic + hybrid retrieval logic
-â”‚   â”‚   â””â”€â”€ reranker.py              # Reranking retrieved chunks
-â”‚   â”‚
-â”‚   â”œâ”€â”€ rag/
-â”‚   â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”‚   â”œâ”€â”€ chain.py                 # Core RAG pipeline (question -> retrieve -> generate)
-â”‚   â”‚   â”œâ”€â”€ citations.py             # File-level citation formatting
-â”‚   â”‚   â”œâ”€â”€ crag.py                  # Corrective RAG - cross-check retrieved context
-â”‚   â”‚   â””â”€â”€ self_rag.py              # Self-RAG - fact-check own answers
-â”‚   â”‚
-â”‚   â”œâ”€â”€ agent/
-â”‚   â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”‚   â”œâ”€â”€ graph.py                 # LangGraph state machine definition
-â”‚   â”‚   â”œâ”€â”€ nodes.py                 # Individual graph nodes (diagnose, search, fix, verify)
-â”‚   â”‚   â”œâ”€â”€ tools.py                 # Code search tool, doc search tool, etc.
-â”‚   â”‚   â”œâ”€â”€ memory.py                # Short-term + long-term memory setup
-â”‚   â”‚   â””â”€â”€ workflows/
-â”‚   â”‚       â”œâ”€â”€ conditional.py       # Error-type branching logic
-â”‚   â”‚       â””â”€â”€ iterative.py         # Retry/loop logic for wrong fixes
-â”‚   â”‚
-â”‚   â”œâ”€â”€ evaluation/
-â”‚   â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”‚   â”œâ”€â”€ ragas_eval.py            # Faithfulness, relevance scoring
-â”‚   â”‚   â””â”€â”€ test_queries.py          # Sample Q&A pairs for evaluation
-â”‚   â”‚
-â”‚   â””â”€â”€ config.py                    # Model names, chunk sizes, env settings
-â”‚
-â”œâ”€â”€ tests/
-â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”œâ”€â”€ test_retrieval.py
-â”‚   â”œâ”€â”€ test_agent.py
-â”‚   â””â”€â”€ test_api.py
-â”‚
-â”œâ”€â”€ notebooks/
-â”‚   â”œâ”€â”€ 01_codebase_exploration.ipynb
-â”‚   â”œâ”€â”€ 02_chunking_experiments.ipynb
-â”‚   â”œâ”€â”€ 03_rag_baseline.ipynb
-â”‚   â””â”€â”€ 04_agent_development.ipynb
-â”‚
-â”œâ”€â”€ data/
-â”‚   â”œâ”€â”€ .gitkeep                     # Target codebase cloned here (gitignored)
-â”‚   â””â”€â”€ eval_dataset.json            # Evaluation questions + expected answers
-â”‚
-â”œâ”€â”€ vector_store/
-â”‚   â””â”€â”€ .gitkeep                     # Persisted vector DB (gitignored)
-â”‚
-â”œâ”€â”€ docker/
-â”‚   â”œâ”€â”€ Dockerfile
-â”‚   â””â”€â”€ docker-compose.yml           # App + vector DB services together
-â”‚
-â”œâ”€â”€ .env.example                     # API keys template (OpenAI/Groq/etc.)
-â”œâ”€â”€ .gitignore
-â”œâ”€â”€ requirements.txt
-â”œâ”€â”€ README.md
-â””â”€â”€ LICENSE
+│
+├── app/
+│   ├── __init__.py
+│   ├── main.py                      # FastAPI entrypoint (routes, CORS, startup)
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── routes.py                # REST endpoints (/ask, /debug, /index, /fix, /tests, /health)
+│   │   └── schemas.py               # Pydantic request/response models
+│   └── middleware/
+│       ├── __init__.py
+│       └── guardrails.py            # Confirmation gate before destructive fixes
+│
+├── src/
+│   ├── __init__.py
+│   ├── config.py                    # Settings, model configuration, project paths
+│   │
+│   ├── ingestion/
+│   │   ├── __init__.py
+│   │   ├── loader.py                # Load/clone target codebase files
+│   │   ├── chunker.py               # Python AST chunking (functions, classes, methods)
+│   │   ├── embedder.py              # SentenceTransformer vector embedding generation
+│   │   └── indexer.py               # Automated background indexing pipeline
+│   │
+│   ├── retrieval/
+│   │   ├── __init__.py
+│   │   ├── vector_store.py          # Persistent ChromaDB client and collection management
+│   │   ├── retriever.py             # Vector similarity search engine
+│   │   └── reranker.py              # Hybrid lexical & semantic reranking
+│   │
+│   ├── rag/
+│   │   ├── __init__.py
+│   │   ├── chain.py                 # Core RAG pipeline (question -> retrieve -> synthesize)
+│   │   ├── citations.py             # File-level and line-range citation formatting
+│   │   ├── citation_verifier.py     # Source citation verification
+│   │   ├── context_builder.py       # Context window budgeting and snippet assembly
+│   │   ├── crag.py                  # Corrective RAG (CRAG) relevance evaluation
+│   │   ├── self_rag.py              # Self-RAG reflection and faithfulness fact-checking
+│   │   └── llm.py                   # Groq LPU and Ollama LLM provider factory
+│   │
+│   ├── agent/
+│   │   ├── __init__.py
+│   │   ├── graph.py                 # LangGraph cyclic state machine with SQLite checkpointing
+│   │   ├── nodes.py                 # Core graph nodes (intent, LLM, tools, verifier, critic)
+│   │   ├── tools.py                 # Tool interfaces (code_search, doc_search, read_file)
+│   │   ├── memory.py                # SessionManager and AgentState definition
+│   │   ├── validator.py             # AST syntax and integrity validation critic
+│   │   ├── context_verifier.py      # Context cross-checker anti-hallucination guardrail
+│   │   └── workflows/
+│   │       ├── __init__.py
+│   │       ├── conditional.py       # Error-type routing and tool execution branching
+│   │       └── iterative.py         # Self-correction reflection loop and retry budgeting
+│   │
+│   ├── guardrails/
+│   │   ├── __init__.py
+│   │   ├── manager.py               # Central GuardrailManager coordinator
+│   │   ├── human_approval.py        # Explicit confirmation gate before file modifications
+│   │   ├── filesystem.py            # Path traversal and protected file boundaries
+│   │   ├── command_safety.py        # Strict execution allowlist & forbidden command blocker
+│   │   ├── secrets.py               # Secret masking and credential leak prevention
+│   │   ├── patch_validator.py       # Git diff syntax and file integrity validation
+│   │   ├── prompt_injection.py      # Adversarial prompt injection defense
+│   │   ├── fix_manager.py           # Patch proposal, application, and rollback tracker
+│   │   └── audit.py                 # Tamper-evident JSONL audit trail logger
+│   │
+│   ├── evaluation/
+│   │   ├── __init__.py
+│   │   ├── lexical_metrics.py       # BLEU, ROUGE-L, and Exact Match scoring
+│   │   ├── semantic_metrics.py      # Cosine semantic similarity evaluation
+│   │   ├── ragas_eval.py            # Faithfulness, answer relevance, and context precision
+│   │   └── test_queries.py          # Benchmark dataset and evaluation test cases
+│   │
+│   └── observability/
+│       ├── __init__.py
+│       └── tracker.py               # LangSmith tracing and run telemetry
+│
+├── tests/
+│   ├── __init__.py
+│   ├── test_guardrails.py           # Multi-layered safety and security test suite
+│   ├── test_api_endpoints.py        # FastAPI endpoint integration tests
+│   ├── test_chunker.py              # AST code chunker tests
+│   ├── test_nested_and_decorators.py # Nested class and decorator chunking tests
+│   ├── test_vector_store.py         # ChromaDB vector store read/write tests
+│   ├── test_retriever.py            # Vector retrieval and search tests
+│   ├── test_rag_chain.py            # RAG pipeline end-to-end tests
+│   ├── test_fix_retry_loop.py       # AST fix validator and self-correction tests
+│   ├── test_agent_nodes.py          # LangGraph node execution tests
+│   └── ...                          # 36+ comprehensive unit and integration tests
+│
+├── data/
+│   ├── .gitkeep
+│   ├── eval_dataset.json            # Curated evaluation dataset
+│   └── backups/                     # Automatic pre-patch rollback backups (gitignored)
+│
+├── docs/
+│   └── Codebase_Debugging_Agent.docx # System documentation and specification
+│
+├── notebooks/                       # Exploratory analysis and prototyping notebooks
+│   ├── 01_codebase_exploration.ipynb
+│   ├── 02_chunking_experiments.ipynb
+│   ├── 03_rag_baseline.ipynb
+│   └── 04_agent_development.ipynb
+│
+├── scripts/
+│   └── deploy_aws.sh                # 1-Click AWS EC2 deployment automation script
+│
+├── docker/
+│   ├── Dockerfile                   # Isolated container definition
+│   └── docker-compose.yml           # Multi-container orchestration config
+│
+├── Dockerfile                       # Production root Dockerfile (Hugging Face / Cloud Run compatible)
+├── docker-compose.yml               # Production root Docker Compose specification
+├── .dockerignore                    # Docker build exclusion rules
+├── .env.example                     # Environment configuration template
+├── .gitignore                       # Git exclusion rules
+├── requirements.txt                 # Project dependencies
+├── LICENSE                          # MIT License
+└── README.md
 ```
 
-## Quick Notes on Key Folders
+## Architectural Highlights
 
-| Folder / Component | Why it's separated this way |
+| Component | Responsibility |
 | --- | --- |
-| **`app/` vs `src/`** | `app/` = FastAPI/web layer only; `src/` = all core logic (reusable, testable independent of the API) |
-| **`rag/` vs `agent/`** | Keeps your "basic RAG" (v1-v2 from the build plan) cleanly separate from "agentic upgrades" (v4-v7) â€” mirrors your actual build stages |
-| **`rag/crag.py` + `rag/self_rag.py`** | Dedicated files for the CRAG/Self-RAG upgrade stage â€” easy to point to in interviews |
-| **`middleware/guardrails.py`** | Matches your Stage 12 patch (confirmation before destructive changes) |
-| **`evaluation/ragas_eval.py`** | Matches your Stage 13 patch (RAGAS evaluation) |
-| **`docker/`** | Separate folder keeps deployment config isolated from app logic |
+| **`app/` vs `src/`** | `app/` contains the web/API layer (FastAPI, schemas, routing); `src/` houses all domain logic, agents, RAG, and guardrails (testable independently of HTTP). |
+| **`rag/` vs `agent/`** | Keeps standard RAG (retrieval, context building, citations) decoupled from the agentic graph (LangGraph state machine, tool reasoning, reflection loops). |
+| **`rag/crag.py` & `rag/self_rag.py`** | Corrective RAG (CRAG) relevance scoring and Self-RAG reflection to eliminate hallucinations. |
+| **`guardrails/`** | Comprehensive security layer: human approval gates, protected file paths, shell allowlists, secret redaction, and rollback backups. |
+| **`evaluation/`** | Deep evaluation suite with RAGAS metrics, BLEU, ROUGE-L, and semantic similarity scoring. |
 
+---
 
 # Autonomous Codebase Debugging Agent
 
-A stateful codebase debugging agent built with **LangGraph**, Python **AST structural chunking**, and ultra-fast LLMs via **Groq LPUs** (`llama-3.3-70b-versatile`) with optional local **Ollama** support.
+A stateful codebase debugging agent built with **LangGraph**, Python **AST structural chunking**, and ultra-fast LLMs via **Groq LPUs** (`llama-3.3-70b-versatile` / `qwen/qwen3.8-27b`) with optional local **Ollama** support.
 
 ## Architecture & Workflow
 
-The agent uses a cyclic LangGraph state machine rather than a simple loop:
+The agent uses a cyclic LangGraph state machine:
 
-1. **Intent Classification**: Routes queries to AST symbol search (`code_search`) or markdown/doc search (`doc_search`).
-2. **Tool Execution**: Retrieves structural code chunks (functions, classes, line numbers) or setup files.
-3. **Context Cross-Checking**: Evaluates semantic alignment and keyword coverage between retrieved snippets and the user query before synthesis.
-4. **Fix Validation Critic**: Parses proposed Python code snippets with `ast.parse`. Syntax errors trigger an automated reflection loop that supplies tracebacks back to the LLM for correction.
-5. **Session Memory**: Uses SQLite checkpointing (`SqliteSaver`) to retain investigated files, active symbols, and debugging notes across turns.
+1. **Intent Classification**: Routes incoming queries to AST symbol search (`code_search`) or documentation search (`doc_search`).
+2. **Tool Execution**: Retrieves structural code chunks (functions, classes, line numbers) and setup configurations.
+3. **Context Cross-Checking (CRAG)**: Evaluates semantic alignment and keyword coverage between retrieved snippets and user queries before synthesis.
+4. **Fix Validation Critic**: Parses proposed Python code snippets with `ast.parse`. Syntax errors automatically trigger a reflection loop with error tracebacks back to the LLM.
+5. **Session Memory**: Uses SQLite checkpointing (`SqliteSaver`) to retain investigated files, active symbols, and debugging notes across multi-turn conversations.
 
 ## Setup
 
@@ -194,4 +232,3 @@ The agent is fully containerized with production-grade security, persistent stor
    docker inspect --format='{{json .State.Health.Status}}' codebase-debugging-agent
    # Output: "healthy"
    ```
-

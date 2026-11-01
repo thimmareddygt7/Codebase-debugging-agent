@@ -29,3 +29,10 @@ data/fixes.json
 # Cache directories
 .pytest_cache/
 .ipynb_checkpoints/
+
+# Temporary and OS junk files
+~$*
+*.tmp
+*.log
+.DS_Store
+Thumbs.db

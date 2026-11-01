@@ -15,7 +15,9 @@ class CodebaseLoader:
             "env",
             ".env",
             "node_modules",
+            "tests",
             "testings",
+            "docs",
         }
 
         self.supported_extensions = {
