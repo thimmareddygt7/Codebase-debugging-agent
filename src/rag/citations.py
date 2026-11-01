@@ -36,3 +36,7 @@ class CitationBuilder:
             return "No sources available."
 
         return "\n".join(citations)
+
+
+# Alias for backward-compatibility and naming consistency
+CitationFormatter = CitationBuilder

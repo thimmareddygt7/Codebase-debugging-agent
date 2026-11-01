@@ -82,3 +82,7 @@ def get_llm(provider: str = None):
         if settings.GROQ_API_KEY:
             return GroqLLM()
         return OllamaLLM()
+
+
+# Alias for factory pattern
+LLMFactory = get_llm
