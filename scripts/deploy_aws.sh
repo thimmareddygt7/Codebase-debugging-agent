@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # ==============================================================================
 # Automated 1-Click AWS EC2 Free Tier Deployment Script
 # Targets: Ubuntu 22.04 / 24.04 LTS on t2.micro or t3.micro
@@ -64,7 +64,9 @@ else
 fi
 
 # 4. Build and Start Container Services
-echo "--> [4/5] Building and launching container services..."
+echo "--> [4/5] Preparing persistent directories and launching container services..."
+sudo mkdir -p data/backups vector_store
+sudo chmod -R 777 data vector_store
 sudo docker compose down --remove-orphans 2>/dev/null || true
 sudo docker compose up --build -d
 

@@ -33,7 +33,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Create application directories for persistent state, sessions, and vector store
-RUN mkdir -p /app/data /app/data/backups /app/vector_store
+RUN mkdir -p /app/data /app/data/backups /app/vector_store && \
+    chmod -R 777 /app/data /app/vector_store
 
 # Create a non-privileged user and grant ownership
 RUN useradd -m -u 1000 appuser && \
