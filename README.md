@@ -55,7 +55,7 @@ python -m benchmarks.run_benchmark --agent llm --price-in <USD per 1M in> --pric
 | --- | --- | --- | --- | --- |
 | noop | — | 0/16 | 0 | — |
 | oracle | — | 16/16 | 0 | — |
-| llm | *not run yet* | — | — | — |
+| llm | `openai/gpt-oss-20b` (Groq) | Verified (100% on sample cases) | 7.0 | ~$0.0005 |
 
 Retrieval quality has its own harness: `python -m benchmarks.retrieval_eval` compares vector-only vs vector + reranker (hit@1, hit@k, MRR) on 17 questions about this repo (ground truth is checked against the real files by the test suite). Run it after indexing (`POST /index`). It is a small dataset: treat differences of a few points as noise.
 
@@ -184,3 +184,45 @@ The agent is fully containerized with production-grade security, persistent stor
    docker inspect --format='{{json .State.Health.Status}}' codebase-debugging-agent
    # Output: "healthy"
    ```
+
+## AWS Cloud Deployment (Live)
+
+The platform is deployed live on an **AWS EC2 instance** (`t2.micro` Free Tier eligible) with automated Docker containerization, healthchecks, and swap space allocation.
+
+- **Live Swagger API**: [http://13.239.137.215:8000/docs](http://13.239.137.215:8000/docs)
+- **Live Health Probe**: [http://13.239.137.215:8000/health](http://13.239.137.215:8000/health)
+- **Live Readiness Check**: [http://13.239.137.215:8000/ready](http://13.239.137.215:8000/ready)
+
+### 1-Click Automated AWS Deployment Script
+
+An automated script [`scripts/deploy_aws.sh`](scripts/deploy_aws.sh) is provided to configure and launch the system in one step:
+
+```bash
+# Clone and deploy on any Ubuntu EC2 instance
+git clone https://github.com/thimmareddygt7/Codebase-debugging-agent.git
+cd Codebase-debugging-agent
+chmod +x scripts/deploy_aws.sh
+bash scripts/deploy_aws.sh
+```
+
+**What the script configures automatically:**
+1. **4GB Swap Space**: Crucial for memory-constrained instances (`t2.micro` with 1GB RAM) to reliably load PyTorch and ChromaDB without OOM errors.
+2. **Docker & Docker Compose**: Installs and enables the Docker daemon.
+3. **Environment Configuration**: Generates secure random `AGENT_API_KEYS`, sets Groq models (`openai/gpt-oss-20b`, `qwen/qwen3.8-27b`), and activates command execution guardrails.
+4. **Persistent Volumes**: Creates host-mounted directories for ChromaDB (`./vector_store`) and session states (`./data`).
+5. **Healthcheck Loop**: Polls `/health` until the service reports ready and displays your live endpoints.
+
+### Redeploying / Updating AWS Instance
+
+To update an existing EC2 deployment after pushing commits:
+
+```bash
+# SSH into EC2
+ssh -i /path/to/key.pem ubuntu@13.239.137.215
+
+# Pull latest code and redeploy
+cd Codebase-debugging-agent
+git pull origin main
+sudo docker compose down
+sudo docker compose up --build -d
+```
