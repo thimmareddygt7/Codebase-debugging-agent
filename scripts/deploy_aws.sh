@@ -6,7 +6,7 @@
 set -e
 
 echo "===================================================================="
-echo " Starting AWS EC2 Free Tier Setup for Codebase Debugging Agent"
+echo " Starting AWS EC2 Deployment for Codebase Debugging Agent"
 echo "===================================================================="
 
 # 1. Configure 4GB Swap Space (Essential for 1GB RAM t2.micro instances)
@@ -49,14 +49,19 @@ if [ ! -f .env ]; then
         INPUT_GROQ_KEY="$GROQ_API_KEY"
     fi
 
+    RANDOM_API_KEY=$(openssl rand -hex 16 2>/dev/null || python3 -c "import secrets; print(secrets.token_urlsafe(32))" 2>/dev/null || echo "sk_agent_$(date +%s)")
+
     cat <<EOF > .env
 MODEL_PROVIDER=groq
 GROQ_API_KEY=${INPUT_GROQ_KEY}
-GROQ_MODEL=qwen/qwen3.6-27b
-FALLBACK_MODEL=openai/gpt-oss-20b
+GROQ_MODEL=openai/gpt-oss-20b
+FALLBACK_MODEL=qwen/qwen3.8-27b
 PORT=8000
 VECTOR_STORE_DIR=vector_store
 SESSION_DB_PATH=data/sessions.db
+AGENT_API_KEYS=${RANDOM_API_KEY}
+ENABLE_COMMAND_EXECUTION=true
+ALLOW_INSECURE_NO_AUTH=false
 EOF
     echo "    [OK] .env file created."
 else
@@ -72,7 +77,7 @@ sudo docker compose up --build -d
 
 # 5. Verify Health Probe
 echo "--> [5/5] Waiting for services to become healthy..."
-MAX_ATTEMPTS=30
+MAX_ATTEMPTS=40
 ATTEMPT=0
 HEALTHY=false
 
@@ -88,6 +93,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
 done
 
 PUBLIC_IP=$(curl -s https://checkip.amazonaws.com || curl -s ifconfig.me || echo "<YOUR_EC2_PUBLIC_IP>")
+CONFIG_API_KEY=$(grep '^AGENT_API_KEYS=' .env | cut -d'=' -f2- | cut -d',' -f1 || echo "Check .env")
 
 echo ""
 echo "===================================================================="
@@ -97,6 +103,7 @@ if [ "$HEALTHY" = true ]; then
     echo " Live Swagger Docs:  http://${PUBLIC_IP}:8000/docs"
     echo " Health Endpoint:    http://${PUBLIC_IP}:8000/health"
     echo " Ready Endpoint:     http://${PUBLIC_IP}:8000/ready"
+    echo " API Key for Docs:   ${CONFIG_API_KEY}"
 else
     echo " Service started, but healthcheck is still warming up."
     echo " Check container logs with: sudo docker compose logs -f agent"
