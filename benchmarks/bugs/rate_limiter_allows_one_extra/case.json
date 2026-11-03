@@ -1,0 +1,10 @@
+{
+  "id": "rate_limiter_allows_one_extra",
+  "category": "off-by-one",
+  "difficulty": "hard",
+  "description": "Clients configured for 3 requests per window are actually getting 4 requests through.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "gateway/limiter.py"
+  ]
+}

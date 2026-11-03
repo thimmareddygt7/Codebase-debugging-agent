@@ -1,0 +1,10 @@
+{
+  "id": "shallow_copy_config",
+  "category": "state-leak",
+  "difficulty": "medium",
+  "description": "After one request adds an extra host, every later request in the same process sees that host too.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "service/config.py"
+  ]
+}

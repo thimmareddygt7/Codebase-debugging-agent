@@ -1,0 +1,10 @@
+{
+  "id": "version_string_comparison",
+  "category": "type-confusion",
+  "difficulty": "hard",
+  "description": "The updater says 1.9.0 is newer than 1.10.0, so users on 1.9.0 never get offered the upgrade.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "updater/versions.py"
+  ]
+}

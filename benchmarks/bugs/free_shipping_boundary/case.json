@@ -1,0 +1,10 @@
+{
+  "id": "free_shipping_boundary",
+  "category": "boundary",
+  "difficulty": "easy",
+  "description": "Customers who spend exactly the free-shipping minimum are still charged for shipping.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "shop/shipping.py"
+  ]
+}

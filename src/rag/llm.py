@@ -1,0 +1,88 @@
+import os
+import groq
+from src.config import settings
+
+
+class GroqLLM:
+    """Ultra-fast LLM client powered by Groq LPUs."""
+
+    def __init__(
+        self,
+        model: str = None,
+        api_key: str = None,
+        fallback_model: str = None,
+    ):
+        self.api_key = api_key or settings.GROQ_API_KEY or os.getenv("GROQ_API_KEY", "")
+        self.model = model or settings.GROQ_MODEL
+        self.fallback_model = fallback_model or settings.FALLBACK_MODEL
+
+        if not self.api_key:
+            raise ValueError(
+                "GROQ_API_KEY is not set. Please set it in your .env file or environment variable."
+            )
+
+        self.client = groq.Groq(api_key=self.api_key)
+
+    def generate(self, prompt: str) -> str:
+        """Generates response using Groq, with fallback to instant model on rate limits."""
+        messages = [{"role": "user", "content": prompt}]
+        return self.chat(messages)
+
+    def chat(self, messages: list) -> str:
+        """Sends chat completion request to Groq with rate-limit protection."""
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=800,
+            )
+            return response.choices[0].message.content or ""
+        except (groq.RateLimitError, groq.APIStatusError) as exc:
+            is_quota_issue = (
+                isinstance(exc, groq.RateLimitError) or
+                getattr(exc, "status_code", None) in (413, 429) or
+                "rate_limit_exceeded" in str(exc).lower() or
+                "request too large" in str(exc).lower()
+            )
+            if is_quota_issue and self.fallback_model and self.fallback_model != self.model:
+                response = self.client.chat.completions.create(
+                    model=self.fallback_model,
+                    messages=messages,
+                    max_tokens=800,
+                )
+                return response.choices[0].message.content or ""
+            raise
+
+
+class OllamaLLM:
+    """Local LLM client using Ollama (kept for offline fallback)."""
+
+    def __init__(self, model: str = None):
+        self.model = model or settings.OLLAMA_MODEL
+
+    def generate(self, prompt: str) -> str:
+        import ollama
+
+        response = ollama.chat(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response["message"]["content"]
+
+
+def get_llm(provider: str = None):
+    """Factory function returning the configured LLM client."""
+    selected_provider = provider or settings.MODEL_PROVIDER
+
+    if selected_provider.lower() == "groq":
+        return GroqLLM()
+    elif selected_provider.lower() == "ollama":
+        return OllamaLLM()
+    else:
+        if settings.GROQ_API_KEY:
+            return GroqLLM()
+        return OllamaLLM()
+
+
+# Alias for factory pattern
+LLMFactory = get_llm

@@ -1,0 +1,10 @@
+{
+  "id": "order_total_overwrites",
+  "category": "accumulation",
+  "difficulty": "easy",
+  "description": "Orders with several line items are billed only for the last item.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "shop/orders.py"
+  ]
+}

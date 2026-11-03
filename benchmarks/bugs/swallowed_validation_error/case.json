@@ -1,0 +1,10 @@
+{
+  "id": "swallowed_validation_error",
+  "category": "error-handling",
+  "difficulty": "medium",
+  "description": "Garbage quantities typed into the order form silently become 0 instead of showing a validation error.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "orders/parsing.py"
+  ]
+}

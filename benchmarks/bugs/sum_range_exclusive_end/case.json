@@ -1,0 +1,10 @@
+{
+  "id": "sum_range_exclusive_end",
+  "category": "off-by-one",
+  "difficulty": "easy",
+  "description": "The 'sum of 1 to N' helper is always short by exactly N.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "mathlib/series.py"
+  ]
+}

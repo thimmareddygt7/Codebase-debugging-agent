@@ -1,0 +1,10 @@
+{
+  "id": "mean_of_empty_list",
+  "category": "edge-case",
+  "difficulty": "easy",
+  "description": "The dashboard crashes for new accounts that have no data yet.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "stats/summary.py"
+  ]
+}

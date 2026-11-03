@@ -1,0 +1,10 @@
+{
+  "id": "cache_key_collision",
+  "category": "cross-file",
+  "difficulty": "hard",
+  "description": "Some users are shown another user's profile data. It only happens occasionally and only for certain id/resource combinations.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "app/cache.py"
+  ]
+}

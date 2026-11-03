@@ -1,0 +1,10 @@
+{
+  "id": "pagination_off_by_one",
+  "category": "off-by-one",
+  "difficulty": "easy",
+  "description": "The second page of results shows the wrong items, and the first page seems to skip the beginning of the list.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "shop/pagination.py"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "mutable_default_argument",
+  "category": "state-leak",
+  "difficulty": "easy",
+  "description": "Tags from one request show up on completely unrelated later requests.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "tagging/tags.py"
+  ]
+}

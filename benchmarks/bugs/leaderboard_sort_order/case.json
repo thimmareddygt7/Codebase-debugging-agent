@@ -1,0 +1,10 @@
+{
+  "id": "leaderboard_sort_order",
+  "category": "sorting",
+  "difficulty": "medium",
+  "description": "The leaderboard lists players alphabetically instead of showing the highest scores first.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "game/leaderboard.py"
+  ]
+}

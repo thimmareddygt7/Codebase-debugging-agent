@@ -1,0 +1,10 @@
+{
+  "id": "palindrome_normalization",
+  "category": "string-handling",
+  "difficulty": "medium",
+  "description": "Famous palindromic sentences like 'A man, a plan, a canal: Panama' are reported as not palindromes.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "textutils/checks.py"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "remove_while_iterating",
+  "category": "mutation",
+  "difficulty": "medium",
+  "description": "Cleaning up expired sessions sometimes leaves some expired ones behind, especially when several expire at the same time.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "auth/sessions.py"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "integer_division_percentage",
+  "category": "arithmetic",
+  "difficulty": "easy",
+  "description": "Progress bars always show 0% until a task is completely finished.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "reports/progress.py"
+  ]
+}

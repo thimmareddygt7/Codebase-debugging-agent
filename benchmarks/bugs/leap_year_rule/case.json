@@ -1,0 +1,10 @@
+{
+  "id": "leap_year_rule",
+  "category": "domain-logic",
+  "difficulty": "medium",
+  "description": "February 2000 is treated as having 28 days, which breaks invoice due dates.",
+  "test_command": "python -m unittest discover -s tests",
+  "fixed_files": [
+    "calendarx/dates.py"
+  ]
+}
