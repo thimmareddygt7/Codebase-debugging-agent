@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      # Only the light dependencies: unit tests use fakes, so no models / API keys are needed.
+      - run: pip install pytest fastapi httpx python-dotenv
+      - name: Unit tests (security guardrails, fix loop, workspace, benchmark integrity)
+        run: pytest
+      - name: Benchmark harness self-check (no LLM)
+        run: |
+          python -m benchmarks.run_benchmark --agent noop --no-save
+          python -m benchmarks.run_benchmark --agent oracle --no-save
