@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codebase Debugging Agent</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fb;--card:#fff;--text:#1b2230;--muted:#667085;--border:#dde3ee;--accent:#2f5bd8;--accent-ink:#fff;--good:#17794a;--good-bg:#e4f5eb;--warn:#8a5a00;--warn-bg:#fff2cf;--bad:#b42318;--bad-bg:#fdeae8;--code:#f1f4f9;--add:#e4f5eb;--del:#fdeae8;--hunk:#e6edfc;--get:#2f5bd8;--post:#17794a}
+@media (prefers-color-scheme:dark){:root{--bg:#0f131b;--card:#171c26;--text:#e7ebf3;--muted:#9aa4b5;--border:#2a3140;--accent:#7aa2ff;--accent-ink:#0b1020;--good:#5ad08f;--good-bg:#12301f;--warn:#f0c14b;--warn-bg:#3a2e0e;--bad:#ff8a80;--bad-bg:#3b1816;--code:#0f131b;--add:#12301f;--del:#3b1816;--hunk:#1c2740;--get:#7aa2ff;--post:#5ad08f}}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono,pre,code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.muted{color:var(--muted)}
+header.top{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+header h1{font-size:18px;margin:0}
+header .sub{font-size:13px;color:var(--muted)}
+.pills{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12.5px;border:1px solid var(--border);background:var(--card);white-space:nowrap}
+.pill.good{color:var(--good);background:var(--good-bg);border-color:transparent}
+.pill.warn{color:var(--warn);background:var(--warn-bg);border-color:transparent}
+.pill.bad{color:var(--bad);background:var(--bad-bg);border-color:transparent}
+.btn{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.danger{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn.ghost{background:transparent}
+.btn.small{padding:2px 8px;font-size:12.5px}
+a.btn{color:var(--text);display:inline-block}
+.btn:disabled{opacity:.55;cursor:wait}
+.btn:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.banner{max-width:1200px;margin:12px auto 0;padding:0 16px}
+.banner>div{border-radius:10px;padding:10px 14px;border:1px solid var(--border);background:var(--card)}
+.banner .warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.banner .bad{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+.start{border-left:5px solid var(--accent)!important}
+.start ol{margin:6px 0 6px 20px;padding:0}
+.layout{display:grid;grid-template-columns:250px 1fr;gap:16px;max-width:1200px;margin:0 auto;padding:16px}
+.layout>*{min-width:0}
+nav#steps{display:flex;flex-direction:column;gap:6px;position:sticky;top:76px;align-self:start}
+.stepbtn{display:flex;gap:10px;align-items:center;text-align:left;border:1px solid var(--border);background:var(--card);border-radius:10px;padding:8px 10px;cursor:pointer}
+.stepbtn .num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--code);font-size:13px;font-weight:600;flex:none}
+.stepbtn.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.stepbtn.active .num{background:var(--accent);color:var(--accent-ink)}
+.more{margin-top:10px}
+.more>summary{cursor:pointer;color:var(--accent);font-size:13.5px}
+.idbox{border:1px solid var(--border);background:var(--card);border-radius:10px;padding:10px;margin-top:8px;font-size:13px}
+.idbox label{display:block;color:var(--muted);margin-top:6px;font-size:12px}
+.idbox input{width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg)}
+.panel h2{margin:0 0 4px;font-size:20px}
+.panel .intro{color:var(--muted);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px}
+.ophead{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ophead h3{margin:0;font-size:16px}
+.method{font-size:11.5px;font-weight:700;border-radius:6px;padding:1px 7px;color:#fff}
+.method.GET{background:var(--get);color:var(--accent-ink)}
+.method.POST{background:var(--post);color:#fff}
+.path{font-size:12.5px;color:var(--muted)}
+.help{margin:6px 0 10px;color:var(--muted);font-size:14px}
+.field{margin:10px 0}
+.field label{display:block;font-weight:600;font-size:13.5px;margin-bottom:3px}
+.field .req{color:var(--bad)}
+.field input[type=text],.field input[type=number],.field select,.field textarea{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg)}
+.field textarea{resize:vertical;min-height:70px}
+.field .hint{font-size:12.5px;color:var(--muted);margin-top:2px}
+.field .err{font-size:12.5px;color:var(--bad);margin-top:2px}
+.field.invalid input,.field.invalid textarea,.field.invalid select{border-color:var(--bad)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.result{margin-top:12px}
+.resmeta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.tabs{display:flex;gap:6px;margin-left:auto}
+.tabs .btn.on{border-color:var(--accent);color:var(--accent)}
+.errbox{border-radius:10px;padding:10px 12px;background:var(--bad-bg);color:var(--bad)}
+.errbox ul{margin:6px 0 0 18px;padding:0}
+.next{margin-top:10px;padding:8px 12px;border-radius:10px;background:var(--good-bg);color:var(--good);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:minmax(110px,170px) 1fr;gap:6px 14px}
+.kv>.k{color:var(--muted);font-size:13px;padding-top:2px}
+.kv>.v{min-width:0;overflow-wrap:anywhere}
+.headline{background:var(--code);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.headline .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.prose{white-space:pre-wrap}
+pre.block{background:var(--code);border-radius:8px;padding:8px 10px;overflow:auto;margin:0;font-size:12.5px;max-height:360px}
+details{margin:2px 0}
+details>summary{cursor:pointer;color:var(--muted);font-size:13px}
+.idchip{display:inline-flex;gap:6px;align-items:center;background:var(--code);border-radius:6px;padding:1px 6px;font-size:12.5px}
+.tablewrap{overflow:auto;max-height:380px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--border);padding:4px 8px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--card)}
+.codecard{border:1px solid var(--border);border-radius:8px;margin:6px 0;overflow:hidden}
+.codecard>.hd{background:var(--code);padding:4px 10px;font-size:12.5px;display:flex;gap:10px;flex-wrap:wrap}
+.codecard pre{margin:0;padding:8px 10px;overflow:auto;font-size:12.5px;max-height:260px}
+.diff{border:1px solid var(--border);border-radius:8px;overflow:auto;max-height:480px;font-size:12.5px}
+.diff div{padding:0 10px;white-space:pre;min-height:1.4em}
+.diff .add{background:var(--add)}
+.diff .del{background:var(--del)}
+.diff .hunk{background:var(--hunk);color:var(--muted)}
+.timeline{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--border)}
+.timeline li{position:relative;margin:0 0 12px;padding-left:12px}
+.timeline li::before{content:"";position:absolute;left:-21px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.timeline .t{font-weight:600}
+.timeline .when{font-size:12px;color:var(--muted);margin-left:8px}
+.foot{display:flex;justify-content:space-between;margin:6px 0 24px}
+dialog{border:1px solid var(--border);border-radius:14px;background:var(--card);color:var(--text);max-width:560px;width:calc(100% - 32px);padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h2{margin:0 0 8px;font-size:18px}
+dialog dt{font-weight:600;margin-top:8px}
+dialog dd{margin:0;color:var(--muted)}
+#toast{position:fixed;top:68px;left:50%;transform:translateX(-50%);background:#1b2230;color:#fff;padding:8px 14px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;max-width:90%}
+#toast.show{opacity:.95}
+body:not(.dev) .ophead .method,body:not(.dev) .ophead .path,body:not(.dev) .devonly{display:none}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.verdict{border-radius:10px;padding:10px 12px;margin-bottom:10px;font-weight:600}
+.verdict.good{background:var(--good-bg);color:var(--good)}.verdict.warn{background:var(--warn-bg);color:var(--warn)}.verdict.bad{background:var(--bad-bg);color:var(--bad)}
+@media (max-width:860px){.layout{grid-template-columns:1fr}aside{display:contents}nav#steps{order:1}main#content{order:2}.idbox{order:3;margin-top:0}nav#steps{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px}.stepbtn{flex:none}.kv{grid-template-columns:1fr}.stepbtn .stt{white-space:nowrap}}
+</style>
+</head>
+<body>
+<noscript><p style="padding:16px">This page needs JavaScript. You can still use the API documentation at /docs.</p></noscript>
+
+<header class="top">
+  <div>
+    <h1>Codebase Debugging Agent</h1>
+    <div class="sub">Ask about your code, investigate errors, and review fixes before anything changes.</div>
+  </div>
+  <div class="pills" aria-live="polite">
+    <span class="pill" id="pillApi">API: checking</span>
+    <span class="pill" id="pillReady">Ready: checking</span>
+    <span class="pill" id="pillIndex">Index: checking</span>
+    <button class="btn small" id="btnRefresh" type="button" title="Check the status again">Refresh</button>
+    <button class="btn small" id="btnHelp" type="button">Help</button>
+    <button class="btn small" id="btnSettings" type="button">Settings</button>
+    <a class="btn small" id="linkDocs" href="/docs" target="_blank" rel="noopener" style="text-decoration:none">API docs</a>
+  </div>
+</header>
+
+<div class="banner" id="banners"></div>
+
+<div class="layout">
+  <aside>
+    <nav id="steps" aria-label="Steps"></nav>
+    <div class="idbox">
+      <strong>Current IDs</strong>
+      <div class="muted" style="font-size:12px">Filled in automatically from earlier steps. You can also paste your own.</div>
+      <label for="idRun">Agent run ID</label><input id="idRun" type="text" autocomplete="off">
+      <label for="idFix">Fix ID</label><input id="idFix" type="text" autocomplete="off">
+      <label for="idTest">Test run ID</label><input id="idTest" type="text" autocomplete="off">
+      <div class="actions"><button class="btn small" id="btnClearIds" type="button">Clear IDs</button></div>
+    </div>
+  </aside>
+  <main id="content"></main>
+</div>
+
+<dialog id="dlgSettings">
+  <h2>Settings</h2>
+  <div class="field"><label for="setBase">API address</label>
+    <input id="setBase" type="text" placeholder="http://your-server:8000">
+    <div class="hint">Leave empty to use the same address as this page.</div></div>
+  <div class="field"><label for="setKey">Access code</label>
+    <input id="setKey" type="password" autocomplete="off" placeholder="The code set as AGENT_API_KEYS on the server">
+    <label style="font-weight:400;margin-top:6px"><input id="setRemember" type="checkbox"> Remember on this device (otherwise it is forgotten when you close the tab)</label></div>
+  <div class="field"><label style="font-weight:400"><input id="setDev" type="checkbox"> Developer mode (show request paths, raw JSON and curl)</label></div>
+  <div class="actions">
+    <button class="btn primary" id="btnSaveSettings" type="button">Save and reconnect</button>
+    <button class="btn" id="btnCloseSettings" type="button">Cancel</button>
+  </div>
+</dialog>
+
+<dialog id="dlgHelp">
+  <h2>How this works</h2>
+  <p class="muted" style="margin-top:0">Work through the steps on the left, in order. Each step has a short explanation and a form.</p>
+  <dl>
+    <dt>Fix automatically</dt><dd>The agent reproduces a failing test, tries a fix on a private copy of your code, and re-runs the tests. Your real code is not changed.</dd>
+    <dt>Index</dt><dd>The agent reads your repository and stores it so it can be searched. Do this once per repository.</dd>
+    <dt>Run</dt><dd>One investigation by the agent. It gets an ID so you can look at its result and its steps later.</dd>
+    <dt>Fix</dt><dd>A proposed code change. It gets its own ID. Nothing changes until you apply it.</dd>
+    <dt>Diff</dt><dd>The exact lines a fix would change. Green lines are added. Red lines are removed.</dd>
+    <dt>Approve / Reject</dt><dd>Your decision on a proposed fix.</dd>
+    <dt>Apply / Roll back</dt><dd>Apply makes the change. Roll back undoes it.</dd>
+    <dt>Audit log</dt><dd>A record of what was proposed, approved and applied.</dd>
+  </dl>
+  <p class="muted">Tip: Ctrl+Enter (or Cmd+Enter) in a text box runs that form. Developers can open the API docs from the top bar.</p>
+  <div class="actions"><button class="btn primary" id="btnCloseHelp" type="button">Got it</button></div>
+</dialog>
+
+<div id="toast" role="status"></div>
+
+<script>
+(() => {
+"use strict";
+
+/* ========================================================================
+   CONFIG: the only part you may need to edit
+   ====================================================================== */
+const CONFIG = {
+  apiKeyHeader: "X-API-Key",     // header used if you type an access code in Settings
+  autoFixTimeoutMs: 330000,      // /debug/fix can run for minutes
+  requestTimeoutMs: 180000,      // agent calls can be slow
+  pollMs: 2000,                  // how often "watch live" refreshes
+  pollMaxMs: 180000,             // stop watching after this long
+  // Names the UI looks for when it needs to pick an ID out of a response (first match wins).
+  idFields: {
+    run:  ["run_id", "agent_run_id", "id"],
+    fix:  ["fix_id", "id"],
+    test: ["test_run_id", "run_id", "id"],
+  },
+  longTextHints: /(log|trace|error|stack|text|description|content|code|diff|body|issue|query|question|prompt|message|instruction)/i,
+  finishedWords: /(complete|completed|done|finished|success|succeeded|failed|error|awaiting|waiting|pending_approval|needs_approval|approved|rejected|ready|idle|passed)/i,
+};
+
+/* ========================================================================
+   STEPS: what appears in the UI (plain-English text lives here)
+   ====================================================================== */
+const STEPS = [
+  { id: "autofix", short: "Fix failing tests", title: "1. Fix failing tests automatically",
+    intro: "Have tests that fail? The agent reproduces the failure, tries a fix on a private copy of your code, and re-runs your tests. Your real code is never changed in this step. If a fix works, you review it before anything is applied.",
+    ops: [
+      { key: "POST /debug/fix", label: "Fix it automatically", primary: true, renderer: "autofix", timeoutMs: CONFIG.autoFixTimeoutMs,
+        help: "Describe the bug in plain words and give the command that runs your failing tests. This can take several minutes, so keep this tab open.",
+        fillExample: { problem_description: "The second page of results shows the wrong items.", target_dir: "benchmarks/bugs/pagination_off_by_one/repo", test_command: "python -m unittest discover -s tests" } },
+    ] },
+  { id: "index", short: "Index a repository", title: "2. Index a repository",
+    intro: "The agent can only answer questions about code it has read. Indexing reads your repository and stores it so it can be searched. Do this once per repository.",
+    ops: [
+      { key: "POST /index", label: "Start indexing", primary: true,
+        help: "Tell the agent which folder to read. Use . for this project. The folder must be inside the locations your server allows.",
+        after: { text: "Indexing has started. It can take a few minutes. Use the next box to watch progress." } },
+      { key: "GET /index/status", label: "Check indexing progress", poll: true,
+        help: "Run this until it says the index is ready or finished. Tick auto-refresh to keep checking." },
+    ] },
+  { id: "ask", short: "Ask or search the code", title: "3. Ask questions or search the code",
+    intro: "Try these before investigating an error. They show whether the agent understands your code.",
+    ops: [
+      { key: "POST /ask", label: "Ask the agent", primary: true, example: "question",
+        help: "Ask in plain English, for example where something is defined or how a feature works. The agent searches the code and answers." },
+      { key: "POST /search", label: "Search the code", example: "search",
+        help: "Find code related to a topic. This returns matching code only, without a written answer." },
+    ] },
+  { id: "debug", short: "Investigate an error", title: "4. Investigate an error",
+    intro: "Paste an error message or stack trace. The agent looks through the indexed code, finds the likely cause, and records what it did.",
+    ops: [
+      { key: "POST /debug", label: "Investigate this error", primary: true, example: "error", captures: ["run"],
+        help: "Paste the full error text. This can take up to a minute.",
+        after: { text: "Investigation finished. Review what the agent did below, then move on to propose a fix.", step: "fix" } },
+      { key: "GET /agent/runs/{run_id}", label: "See the result of a run", idKey: "run",
+        help: "Shows the agent's conclusion for a run. The run ID is filled in for you." },
+      { key: "GET /agent/runs/{run_id}/events", label: "See what the agent did, step by step", idKey: "run", renderer: "events", poll: true,
+        help: "A timeline of the agent's steps. Tick auto-refresh to watch a run that is still going." },
+    ] },
+  { id: "fix", short: "Review a fix", title: "5. Propose and review a fix",
+    intro: "Ask for a code change, read exactly what would change, then approve or reject it. Nothing is applied in this step.",
+    ops: [
+      { key: "POST /fix/propose", label: "Propose a fix", primary: true, captures: ["fix"],
+        help: "The agent writes a code change for the problem it found. The run ID is filled in for you.",
+        after: { text: "Fix proposed. Read the changes below, then approve or reject." } },
+      { key: "GET /fix/{fix_id}", label: "View the proposed fix", idKey: "fix",
+        help: "Shows the fix, its status and the agent's reasoning." },
+      { key: "GET /fix/{fix_id}/diff", label: "See exactly what would change", idKey: "fix", renderer: "diff",
+        help: "Green lines would be added. Red lines would be removed." },
+      { key: "POST /fix/{fix_id}/approve", label: "Approve this fix", idKey: "fix",
+        help: "You are saying the change looks right. Approving does not apply it yet." },
+      { key: "POST /fix/{fix_id}/reject", label: "Reject this fix", idKey: "fix",
+        help: "You are saying the change is wrong or not wanted." },
+    ] },
+  { id: "apply", short: "Apply, test, undo", title: "6. Apply, test and undo",
+    intro: "Applying changes the code. Run the tests afterwards. If something looks wrong, roll back.",
+    ops: [
+      { key: "POST /fix/{fix_id}/apply", label: "Apply the approved fix", idKey: "fix", danger: true,
+        confirm: "This will change the code. Continue?",
+        help: "Makes the change. It normally only works after the fix was approved." },
+      { key: "POST /tests/run", label: "Run the tests", primary: true, captures: ["test"],
+        help: "Runs the approved test command. The fix ID is filled in for you." },
+      { key: "GET /tests/{run_id}", label: "See the test results", idKey: "test", poll: true,
+        help: "Shows whether the tests passed. Tick auto-refresh while tests are still running." },
+      { key: "POST /fix/{fix_id}/rollback", label: "Undo (roll back) the fix", idKey: "fix", danger: true,
+        confirm: "This will undo the applied change. Continue?",
+        help: "Puts the code back the way it was before the fix." },
+    ] },
+  { id: "history", short: "History and quality", title: "7. History and quality",
+    intro: "A record of what happened and how well the agent performs.",
+    ops: [
+      { key: "GET /audit/logs", label: "Audit log", help: "Who proposed, approved and applied what, and when." },
+      { key: "GET /evaluation", label: "Get or run the quality report",
+        help: "Shows quality scores. If there is no report yet, the server may start an evaluation, which can take a while." },
+    ] },
+];
+
+const SAMPLES = {
+  error: 'Traceback (most recent call last):\n  File "app/routes.py", line 42, in create_order\n    uid = data["user_id"]\nKeyError: \'user_id\'',
+  question: "Where is the main entry point of this project, and what does it do?",
+  search: "error handling",
+};
+
+/* ========================================================================
+   Small helpers
+   ====================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+function el(tag, attrs = {}, kids = []) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v;
+    else if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
+    else if (v === true) n.setAttribute(k, "");
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  }
+  (Array.isArray(kids) ? kids : [kids]).forEach(c => { if (c != null && c !== false) n.append(c.nodeType ? c : document.createTextNode(String(c))); });
+  return n;
+}
+const kstore = {   // access code: forgotten when the tab closes unless "Remember" is ticked
+  get() { try { return sessionStorage.getItem("cda_key") || localStorage.getItem("cda_key") || ""; } catch (e) { return ""; } },
+  set(v, remember) { try { sessionStorage.removeItem("cda_key"); localStorage.removeItem("cda_key"); if (v) (remember ? localStorage : sessionStorage).setItem("cda_key", v); } catch (e) { /* storage blocked */ } },
+};
+const store = {
+  get(k, d = "") { try { const v = localStorage.getItem("cda_" + k); return v == null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("cda_" + k, v); } catch (e) { /* storage may be blocked */ } },
+};
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600);
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast("Copied"); }
+  catch (e) {
+    const ta = el("textarea", { style: "position:fixed;opacity:0" }); ta.value = text; document.body.append(ta); ta.select();
+    try { document.execCommand("copy"); toast("Could not copy"); } catch (e2) { toast("Could not copy"); }
+    ta.remove();
+  }
+}
+const prettify = s => String(s).replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim().replace(/^./, c => c.toUpperCase());
+const isObj = v => v && typeof v === "object" && !Array.isArray(v);
+
+/* ========================================================================
+   State and API
+   ====================================================================== */
+const state = {
+  base: (store.get("base") || (location.protocol.startsWith("http") ? location.origin : "")).replace(/\/+$/, ""),
+  apiKey: kstore.get(),
+  spec: null,
+  runId: store.get("runId"), fixId: store.get("fixId"), testId: store.get("testId"),
+  step: store.get("step") || "autofix",
+};
+const idBound = [];   // form fields that follow the current IDs
+if (store.get("dev") === "1") document.body.classList.add("dev");
+
+async function request(method, tpl, { path = {}, query = {}, body, timeoutMs, ctrl: extCtrl } = {}) {
+  const t0 = performance.now();
+  let url = state.base + tpl.replace(/\{([^}]+)\}/g, (_, k) => encodeURIComponent(path[k] == null ? "" : path[k]));
+  const qs = new URLSearchParams();
+  Object.entries(query).forEach(([k, v]) => { if (Array.isArray(v)) v.forEach(x => qs.append(k, x)); else qs.append(k, v); });
+  const q = qs.toString(); if (q) url += (url.includes("?") ? "&" : "?") + q;
+  const headers = { Accept: "application/json" };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (state.apiKey) headers[CONFIG.apiKeyHeader] = state.apiKey;
+  const out = { method, url, headers, bodyText: body === undefined ? "" : JSON.stringify(body), ok: false, status: 0, data: null, text: "", ms: 0, netError: "" };
+  const ctrl = extCtrl || new AbortController(); const timer = setTimeout(() => ctrl.abort(), timeoutMs || CONFIG.requestTimeoutMs);
+  try {
+    const r = await fetch(url, { method, headers, body: out.bodyText || undefined, signal: ctrl.signal });
+    out.status = r.status; out.ok = r.ok; out.text = await r.text();
+    try { out.data = out.text ? JSON.parse(out.text) : null; } catch (e) { out.data = null; }
+  } catch (e) { out.netError = e.name === "AbortError" ? (ctrl.userCancelled ? "cancelled" : "timeout") : String(e.message || e); }
+  finally { clearTimeout(timer); out.ms = performance.now() - t0; }
+  return out;
+}
+function toCurl(res) {
+  const parts = [`curl -X ${res.method} '${res.url}'`];
+  Object.entries(res.headers).forEach(([k, v]) => parts.push(`-H '${k}: ${k === CONFIG.apiKeyHeader ? "$AGENT_API_KEY" : v}'`));
+  if (res.bodyText) parts.push(`-d '${res.bodyText.replace(/'/g, "'\\''")}'`);
+  return parts.join(" \\\n  ");
+}
+
+/* ========================================================================
+   Reading the API description (/openapi.json) to build forms
+   ====================================================================== */
+function deref(spec, node) {
+  let guard = 0;
+  while (node && node.$ref && guard++ < 25) {
+    node = node.$ref.replace(/^#\//, "").split("/").reduce((o, k) => (o ? o[k] : undefined), spec);
+  }
+  return node || {};
+}
+function simplify(spec, schema, depth = 0) {
+  if (!schema || depth > 8) return {};
+  schema = deref(spec, schema);
+  if (schema.allOf) {
+    const m = Object.assign({}, schema); delete m.allOf; m.properties = Object.assign({}, m.properties); m.required = (m.required || []).slice();
+    schema.allOf.forEach(part => {
+      const s = simplify(spec, part, depth + 1);
+      Object.assign(m.properties, s.properties || {}); m.required.push(...(s.required || []));
+      m.type = m.type || s.type; m.description = m.description || s.description;
+      if (m.default === undefined) m.default = s.default;
+    });
+    if (!Object.keys(m.properties).length) delete m.properties;
+    return m;
+  }
+  const alts = schema.anyOf || schema.oneOf;
+  if (alts) {
+    const nonNull = alts.filter(a => a.type !== "null");
+    if (nonNull.length) {
+      const first = simplify(spec, nonNull[0], depth + 1);
+      return Object.assign({}, first, {
+        title: schema.title || first.title, description: schema.description || first.description,
+        default: schema.default !== undefined ? schema.default : first.default,
+      });
+    }
+  }
+  return schema;
+}
+function findOp(key) {
+  if (!state.spec) return null;
+  const [m, p] = key.split(" "); const item = state.spec.paths[p];
+  const op = item && item[m.toLowerCase()];
+  return op ? { op, shared: item.parameters || [] } : null;
+}
+function fieldsFor(key) {
+  const [method, tpl] = key.split(" ");
+  const pathNames = [...tpl.matchAll(/\{([^}]+)\}/g)].map(m => m[1]);
+  const fields = []; const found = findOp(key);
+  if (!found) {
+    pathNames.forEach(n => fields.push({ name: n, in: "path", required: true, schema: { type: "string" }, description: "" }));
+    if (method !== "GET") fields.push({ name: "request body (JSON)", in: "rawbody", required: false, schema: { type: "object" }, description: "Paste the JSON body. The API docs show the exact format." });
+    return { fields, known: false };
+  }
+  [...found.shared, ...(found.op.parameters || [])].map(p => deref(state.spec, p)).forEach(p =>
+    fields.push({ name: p.name, in: p.in, required: !!p.required, schema: simplify(state.spec, p.schema || {}), description: p.description || "" }));
+  const content = found.op.requestBody && found.op.requestBody.content;
+  const media = content && (content["application/json"] || Object.values(content)[0]);
+  if (media && media.schema) {
+    const body = simplify(state.spec, media.schema);
+    if (body.properties) {
+      const req = new Set(body.required || []);
+      Object.entries(body.properties).forEach(([name, sch]) => {
+        const s = simplify(state.spec, sch);
+        fields.push({ name, in: "body", required: req.has(name), schema: s, description: s.description || "", title: s.title });
+      });
+    } else fields.push({ name: "request body (JSON)", in: "rawbody", required: true, schema: body, description: body.description || "" });
+  }
+  const order = { path: 0, query: 1, body: 2, rawbody: 3 };
+  fields.sort((a, b) => (order[a.in] ?? 9) - (order[b.in] ?? 9));
+  return { fields, known: true };
+}
+
+/* ========================================================================
+   Form fields
+   ====================================================================== */
+function makeField(f) {
+  const s = f.schema || {}; const id = "f_" + Math.random().toString(36).slice(2, 9);
+  const wrap = el("div", { class: "field" });
+  const shown = f.in === "body" && f.title && f.title.toLowerCase() !== f.name.toLowerCase() ? f.title : f.name;
+  wrap.append(el("label", { for: id }, [prettify(shown), f.required ? el("span", { class: "req", title: "Required" }, " *") : null]));
+  let input, get, set; const t = s.type;
+  if (Array.isArray(s.enum)) {
+    input = el("select", { id }, [f.required ? null : el("option", { value: "" }, "(not set)"), ...s.enum.map(v => el("option", { value: String(v) }, String(v)))]);
+    get = () => (input.value === "" ? undefined : input.value); set = v => { input.value = v == null ? "" : String(v); };
+  } else if (t === "boolean") {
+    input = el("input", { id, type: "checkbox" }); get = () => input.checked; set = v => { input.checked = !!v; };
+  } else if (t === "integer" || t === "number") {
+    input = el("input", { id, type: "number", step: t === "integer" ? "1" : "any" });
+    if (s.minimum != null) input.min = s.minimum; if (s.maximum != null) input.max = s.maximum;
+    get = () => (input.value === "" ? undefined : Number(input.value)); set = v => { input.value = v == null ? "" : v; };
+  } else if (t === "array") {
+    const it = (simplify(state.spec, s.items || {}) || {}).type; const simple = !it || ["string", "integer", "number"].includes(it);
+    input = simple ? el("input", { id, type: "text", placeholder: "separate items with commas" }) : el("textarea", { id, rows: 3, class: "mono", placeholder: "JSON list" });
+    get = () => { const raw = input.value.trim(); if (!raw) return undefined; if (!simple) return JSON.parse(raw);
+      return raw.split(",").map(x => x.trim()).filter(Boolean).map(x => (it === "integer" || it === "number" ? Number(x) : x)); };
+    set = v => { input.value = Array.isArray(v) ? (simple ? v.join(", ") : JSON.stringify(v, null, 2)) : (v == null ? "" : String(v)); };
+  } else if (t === "object" || s.properties || f.in === "rawbody") {
+    input = el("textarea", { id, rows: 5, class: "mono", placeholder: "{ }" });
+    get = () => { const raw = input.value.trim(); return raw ? JSON.parse(raw) : undefined; };
+    set = v => { input.value = v == null ? "" : (typeof v === "string" ? v : JSON.stringify(v, null, 2)); };
+  } else {
+    const long = !s.maxLength || s.maxLength > 120 ? CONFIG.longTextHints.test(f.name) : false;
+    input = long ? el("textarea", { id, rows: 5 }) : el("input", { id, type: "text", autocomplete: "off" });
+    if (s.maxLength) input.maxLength = s.maxLength;
+    get = () => (input.value.trim() === "" ? undefined : input.value); set = v => { input.value = v == null ? "" : String(v); };
+  }
+  if (s.default !== undefined && s.default !== null) set(s.default);
+  const ex = Array.isArray(s.examples) ? s.examples[0] : s.example;
+  if (ex !== undefined && input.placeholder !== undefined && typeof ex !== "object") input.placeholder = String(ex).slice(0, 90);
+  wrap.append(input);
+  const bits = []; if (f.description) bits.push(f.description);
+  if (s.minimum != null || s.maximum != null) bits.push(`Allowed: ${s.minimum ?? "any"} to ${s.maximum ?? "any"}`);
+  if (f.in === "path") bits.push("Filled in from an earlier step when available.");
+  if (bits.length) wrap.append(el("div", { class: "hint" }, bits.join(" ")));
+  const errBox = el("div", { class: "err", hidden: true }); wrap.append(errBox);
+  return { f, wrap, input, get, set, showError(m) { wrap.classList.toggle("invalid", !!m); errBox.hidden = !m; errBox.textContent = m || ""; } };
+}
+function collect(fos) {
+  const out = { path: {}, query: {}, body: {}, raw: undefined, errors: [] };
+  fos.forEach(fo => {
+    fo.showError("");
+    let v; try { v = fo.get(); } catch (e) { out.errors.push([fo, "This is not valid JSON."]); return; }
+    if (v === undefined) { if (fo.f.required) out.errors.push([fo, "This field is required."]); return; }
+    if (fo.f.in === "path") out.path[fo.f.name] = v; else if (fo.f.in === "query") out.query[fo.f.name] = v;
+    else if (fo.f.in === "rawbody") out.raw = v; else out.body[fo.f.name] = v;
+  });
+  return out;
+}
+function idKindFor(opCfg, name) {
+  if (opCfg.idKey && /^(run_id|fix_id|test_run_id|id)$/.test(name)) return opCfg.idKey;
+  return { run_id: "run", fix_id: "fix", test_run_id: "test" }[name] || null;
+}
+function syncIds() {
+  idBound.forEach(({ fo, kind }) => { const v = state[kind + "Id"]; if (v) fo.set(v); });
+  $("#idRun").value = state.runId; $("#idFix").value = state.fixId; $("#idTest").value = state.testId;
+}
+function pickId(data, names) {
+  const layers = [data, data && data.run, data && data.fix, data && data.data, data && data.result].filter(isObj);
+  for (const n of names) for (const l of layers) if (l[n] != null && typeof l[n] !== "object") return String(l[n]);
+  return null;
+}
+function captureIds(opCfg, data) {
+  if (!isObj(data)) return;
+  const got = [];
+  (opCfg.captures || []).forEach(kind => { const v = pickId(data, CONFIG.idFields[kind]); if (v) { state[kind + "Id"] = v; got.push(kind); } });
+  const fx = pickId(data, ["fix_id"]); if (fx && !got.includes("fix")) { state.fixId = fx; got.push("fix"); }
+  if (Array.isArray(data.proposal_ids) && data.proposal_ids[0] && !got.includes("fix")) { state.fixId = String(data.proposal_ids[0]); got.push("fix"); }
+  const ts = pickId(data, ["test_run_id"]); if (ts && !got.includes("test")) { state.testId = ts; got.push("test"); }
+  if (got.length) {
+    store.set("runId", state.runId); store.set("fixId", state.fixId); store.set("testId", state.testId);
+    syncIds(); toast("Saved " + got.map(k => ({ run: "run", fix: "fix", test: "test run" }[k])).join(", ") + " ID for the next steps");
+  }
+}
+
+/* ========================================================================
+   Friendly rendering of results
+   ====================================================================== */
+const HEADLINE = ["answer", "summary", "diagnosis", "root_cause", "explanation", "conclusion", "message"];
+const FILE_KEYS = ["file", "path", "file_path", "filename", "filepath", "source"];
+const CODE_KEYS = ["snippet", "content", "code", "text", "chunk", "page_content", "body"];
+const isDiff = s => typeof s === "string" && /^(diff --git |--- |\+\+\+ |@@ )/m.test(s) && s.includes("\n");
+const anyKey = (o, keys) => { for (const k of keys) { if (typeof o[k] === "string" && o[k]) return k; if (isObj(o.metadata) && typeof o.metadata[k] === "string" && o.metadata[k]) return "metadata." + k; } return null; };
+const getKey = (o, k) => (k && k.startsWith("metadata.") ? o.metadata[k.slice(9)] : o[k]);
+
+function statusPill(v) {
+  const cls = /(fail|error|reject|rolled|denied|invalid)/i.test(v) ? "bad" : /(complete|success|pass|ready|approved|applied|done|ok|finished)/i.test(v) ? "good" : "warn";
+  return el("span", { class: "pill " + cls }, v);
+}
+function renderDiff(text) {
+  const box = el("div", { class: "diff mono" });
+  text.split("\n").forEach(line => {
+    const c = line.startsWith("@@") ? "hunk" : /^(\+\+\+|---|diff )/.test(line) ? "hunk" : line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : "";
+    box.append(el("div", { class: c }, line === "" ? " " : line));
+  });
+  return box;
+}
+function renderString(v, key) {
+  if (isDiff(v)) return renderDiff(v);
+  if (/^(status|state|result|verdict|outcome)$/i.test(key) && v.length < 40) return statusPill(v);
+  if ((/_id$/.test(key) || key === "id") && v.length <= 80)
+    return el("span", { class: "idchip mono" }, [v, el("button", { class: "btn small ghost", type: "button", onclick: () => copyText(v) }, "Copy")]);
+  if (v.includes("\n") && /^(\s{2,}|def |class |import |from |function |const |let |#include|<\w+|\{)/m.test(v)) return el("pre", { class: "block" }, v);
+  if (v.length > 160 || v.includes("\n")) return el("div", { class: "prose" }, v);
+  return el("span", {}, v);
+}
+function renderCodeCards(arr) {
+  const wrap = el("div");
+  arr.slice(0, 100).forEach(o => {
+    const fk = anyKey(o, FILE_KEYS), ck = anyKey(o, CODE_KEYS);
+    const hd = el("div", { class: "hd" });
+    hd.append(el("strong", { class: "mono" }, fk ? String(getKey(o, fk)) : "snippet"));
+    const s = o.start_line ?? o.line ?? o.lineno, e = o.end_line;
+    if (s != null) hd.append(el("span", { class: "muted" }, e != null ? `lines ${s}-${e}` : `line ${s}`));
+    const sc = o.score ?? o.similarity ?? o.relevance; if (typeof sc === "number") hd.append(el("span", { class: "muted" }, "match " + sc.toFixed(2)));
+    wrap.append(el("div", { class: "codecard" }, [hd, el("pre", { class: "mono" }, String(getKey(o, ck)))]));
+  });
+  if (arr.length > 100) wrap.append(el("div", { class: "muted" }, `Showing the first 100 of ${arr.length}.`));
+  return wrap;
+}
+function renderArray(a, key, depth) {
+  if (!a.length) return el("span", { class: "muted" }, "none");
+  if (a.every(x => x === null || typeof x !== "object")) {
+    if (a.every(x => typeof x === "string" && x.length < 90)) return el("div", {}, a.map(x => el("span", { class: "pill", style: "margin:2px 4px 2px 0" }, x)));
+    return el("ul", { style: "margin:0;padding-left:18px" }, a.slice(0, 200).map(x => el("li", {}, renderValue(x, key, depth + 1))));
+  }
+  if (a.every(isObj)) {
+    if (a.every(o => anyKey(o, CODE_KEYS) && anyKey(o, FILE_KEYS) || anyKey(o, CODE_KEYS) && (o.start_line != null || o.line != null))) return renderCodeCards(a);
+    const keys = [...new Set(a.flatMap(o => Object.keys(o)))];
+    if (keys.length <= 8 && a.every(o => keys.every(k => o[k] == null || typeof o[k] !== "object"))) {
+      const tb = el("table", {}, [el("thead", {}, el("tr", {}, keys.map(k => el("th", {}, prettify(k))))),
+        el("tbody", {}, a.slice(0, 200).map(o => el("tr", {}, keys.map(k => el("td", {}, o[k] == null ? "" : String(o[k]))))))]);
+      return el("div", { class: "tablewrap" }, tb);
+    }
+  }
+  return el("div", {}, a.slice(0, 100).map((x, i) => el("details", { open: depth < 1 && i < 3 }, [el("summary", {}, `Item ${i + 1}`), renderValue(x, key, depth + 1)]));
+}
+function renderObject(o, depth) {
+  const entries = Object.entries(o); if (!entries.length) return el("span", { class: "muted" }, "empty");
+  const wrap = el("div");
+  if (depth === 0) {
+    entries.filter(([k, v]) => HEADLINE.includes(k) && typeof v === "string" && v.length > 20).forEach(([k, v]) =>
+      wrap.append(el("div", { class: "headline" }, [el("div", { class: "k" }, prettify(k)), el("div", { class: "prose" }, v)])));
+  }
+  const grid = el("div", { class: "kv" });
+  entries.forEach(([k, v]) => {
+    if (depth === 0 && HEADLINE.includes(k) && typeof v === "string" && v.length > 20) return;
+    const complex = v && typeof v === "object" && (Array.isArray(v) ? v.length > 0 : Object.keys(v).length > 0);
+    grid.append(el("div", { class: "k" }, prettify(k)));
+    grid.append(el("div", { class: "v" }, complex ? el("details", { open: depth < 1 }, [el("summary", {}, Array.isArray(v) ? `${v.length} item${v.length === 1 ? "" : "s"}` : "details"), renderValue(v, k, depth + 1)]) : renderValue(v, k, depth + 1)));
+  });
+  wrap.append(grid); return wrap;
+}
+function renderValue(v, key = "", depth = 0) {
+  if (depth > 8) return el("pre", { class: "block" }, JSON.stringify(v, null, 2));
+  if (v === null || v === undefined || v === "") return el("span", { class: "muted" }, "—");
+  if (typeof v === "boolean") return el("span", { class: "pill " + (v ? "good" : "") }, v ? "yes" : "no");
+  if (typeof v === "number") return el("span", { class: "mono" }, String(v));
+  if (typeof v === "string") return renderString(v, key);
+  return Array.isArray(v) ? renderArray(v, key, depth) : renderObject(v, depth);
+}
+function findEventList(d) {
+  if (Array.isArray(d)) return d;
+  if (isObj(d)) { if (Array.isArray(d.events)) return d.events; const k = Object.keys(d).find(x => Array.isArray(d[x]) && d[x].length && d[x].every(isObj)); if (k) return d[k]; }
+  return null;
+}
+function renderEvents(d) {
+  const list = findEventList(d); if (!list || !list.length) return renderValue(d);
+  const ul = el("ol", { class: "timeline" });
+  list.slice(0, 300).forEach((ev, i) => {
+    if (!isObj(ev)) { ul.append(el("li", {}, [el("span", { class: "t" }, `Step ${i + 1}`), renderValue(ev)])); return; }
+    const name = ev.step || ev.node || ev.event || ev.type || ev.name || ev.stage || ev.action || `Step ${i + 1}`;
+    const when = ev.timestamp || ev.time || ev.created_at || ev.at;
+    const msgKey = ["message", "detail", "details", "summary", "output", "content", "description", "result"].find(k => ev[k] != null && ev[k] !== "");
+    const used = new Set(["step", "node", "event", "type", "name", "stage", "action", "timestamp", "time", "created_at", "at", msgKey]);
+    const rest = Object.fromEntries(Object.entries(ev).filter(([k]) => !used.has(k)));
+    const li = el("li", {}, [el("span", { class: "t" }, prettify(String(name))), when ? el("span", { class: "when" }, String(when)) : null,
+      typeof ev.status === "string" ? el("span", { style: "margin-left:8px" }, statusPill(ev.status)) : null]);
+    if (msgKey) li.append(el("div", {}, renderValue(ev[msgKey], msgKey, 1)));
+    const restClean = Object.fromEntries(Object.entries(rest).filter(([k]) => k !== "status"));
+    if (Object.keys(restClean).length) li.append(el("details", {}, [el("summary", {}, "more details"), renderValue(restClean, "", 1)]));
+    ul.append(li);
+  });
+  return ul;
+}
+function renderDiffResponse(d) {
+  if (typeof d === "string" && isDiff(d)) return renderDiff(d);
+  if (isObj(d)) {
+    const k = ["diff", "patch", "unified_diff", "content"].find(x => isDiff(d[x])) || Object.keys(d).find(x => isDiff(d[x]));
+    if (k) { const rest = Object.fromEntries(Object.entries(d).filter(([x]) => x !== k)); const w = el("div"); if (Object.keys(rest).length) w.append(renderValue(rest, "", 1), el("div", { style: "height:8px" })); w.append(renderDiff(d[k])); return w; }
+  }
+  return renderValue(d);
+}
+const VERDICTS = {
+  resolved: ["good", "Fixed and verified. Your tests failed before and pass now. Nothing in your real code has changed yet."],
+  unresolved: ["bad", "The agent could not fix it within its step limit. Nothing was changed. Try a clearer description or more steps."],
+  no_failure_reproduced: ["warn", "Your tests already pass, so there is nothing to fix. Check the test command."],
+  flaky_no_change: ["warn", "The tests passed without any change, so the failure may be flaky."],
+  timeout: ["warn", "The agent ran out of time. Nothing was changed."],
+  error: ["bad", "Something went wrong before the agent could finish."],
+};
+function downloadText(name, text) {
+  const a = el("a", { href: URL.createObjectURL(new Blob([text], { type: "text/plain" })), download: name });
+  document.body.append(a); a.click(); a.remove();
+}
+function renderAutoFix(d) {
+  if (!isObj(d)) return renderValue(d);
+  const [cls, msg] = VERDICTS[d.status] || ["warn", "Finished with status: " + d.status];
+  const w = el("div", {}, el("div", { class: "verdict " + cls }, msg));
+  if (d.error) w.append(el("div", { class: "errbox" }, String(d.error)));
+  w.append(el("div", { class: "stats" }, [`${d.steps} steps`, `${d.tool_calls} tool calls`, `${(d.prompt_tokens || 0) + (d.completion_tokens || 0)} tokens`, `${d.duration_seconds} s`].map(t => el("span", { class: "pill" }, t))));
+  if (d.summary) w.append(el("div", { class: "headline" }, [el("div", { class: "k" }, "What the agent found"), el("div", { class: "prose" }, d.summary)]));
+  if (d.diff) w.append(el("h4", { style: "margin:10px 0 4px" }, "Proposed change"), renderDiff(d.diff),
+    el("div", { class: "actions" }, [el("button", { class: "btn small", type: "button", onclick: () => copyText(d.diff) }, "Copy diff"),
+      el("button", { class: "btn small", type: "button", onclick: () => downloadText("fix.patch", d.diff) }, "Download .patch")]));
+  [["Test output before the fix", d.baseline_output], ["Test output after the fix", d.final_output]].forEach(([t, v]) => { if (v) w.append(el("details", {}, [el("summary", {}, t), el("pre", { class: "block mono" }, v)])); });
+  if (d.proposal_note) w.append(el("div", { class: "next", style: "background:var(--warn-bg);color:var(--warn)" }, d.proposal_note));
+  if (Array.isArray(d.proposal_ids) && d.proposal_ids.length) {
+    const t = STEPS.find(x => x.id === "fix");
+    w.append(el("div", { class: "next" }, [el("span", {}, "A pending fix was saved. Review it before applying:"), renderValue(d.proposal_ids[0], "fix_id"),
+      el("button", { class: "btn small primary", type: "button", onclick: () => goStep(t.id) }, "Go to: " + t.short)]));
+  }
+  return w;
+}
+function errorLines(res) {
+  const d = res.data && res.data.detail;
+  if (Array.isArray(d)) return d.map(x => (x && x.loc ? x.loc.filter(p => p !== "body").join(" > ") + ": " : "") + ((x && x.msg) || JSON.stringify(x)));
+  if (typeof d === "string") return [d];
+  if (d && typeof d === "object") return [JSON.stringify(d)];
+  return res.text ? [res.text.slice(0, 500)] : [];
+}
+function errorBox(res) {
+  let head;
+  if (res.netError === "cancelled") head = "Stopped waiting. The server may still finish the work in the background.";
+  else if (res.netError === "timeout") head = `The request took longer than ${CONFIG.requestTimeoutMs / 1000} seconds and was stopped. The agent may still be working, so try the "See the result" step in a moment.`;
+  else if (res.netError) head = `Could not reach the API at ${state.base || "(no address set)"}. Check that the server is running and that the address in Settings is correct. If this page is on a different address than the API, the server must allow it (CORS).`;
+  else if (res.status === 503 && /authentication is not configured/i.test(res.text)) head = "The server has no access code configured. Set AGENT_API_KEYS on the server (or ALLOW_INSECURE_NO_AUTH=true for local testing only), restart it, then enter the same code in Settings.";
+  else if (res.status === 403 && /command execution is disabled/i.test(res.text)) head = "Running tests is switched off on this server. Set ENABLE_COMMAND_EXECUTION=true in the server settings and restart it.";
+  else if (res.status === 401) head = "The access code is missing or wrong. Open Settings and enter the code the server was set up with.";
+  else if (res.status === 403) head = "The API refused this request.";
+  else if (res.status === 400) head = "The server rejected this request:";
+  else if (res.status === 404) head = "Not found. If this step uses an ID, check the ID in the Current IDs box. The item may not exist yet.";
+  else if (res.status === 409) head = "The server says this cannot be done right now (for example, applying a fix that has not been approved).";
+  else if (res.status === 422) head = "Some information is missing or in the wrong format:";
+  else if (res.status === 429) head = "Too many requests. Wait a moment and try again.";
+  else if (res.status >= 500) head = "The server hit a problem while handling this request. The details below may help.";
+  else head = "The request did not succeed.";
+  const lines = res.netError ? [] : errorLines(res);
+  return el("div", { class: "errbox" }, [el("div", {}, head), lines.length ? el("ul", {}, lines.map(l => el("li", {}, l))) : null]);
+}
+
+/* ========================================================================
+   Operation cards
+   ====================================================================== */
+function showResult(card, res) {
+  const box = card.resultBox; box.replaceChildren();
+  const badge = res.netError ? el("span", { class: "pill bad" }, "No connection") : el("span", { class: "pill " + (res.ok ? "good" : "bad") }, `${res.status} ${res.ok ? "OK" : "Error"}`);
+  const meta = el("div", { class: "resmeta" }, [badge, el("span", { class: "muted" }, `${(res.ms / 1000).toFixed(1)} s`)]);
+  box.append(meta);
+  if (!res.ok) { box.append(errorBox(res)); return; }
+  const friendly = el("div"), raw = el("div", { hidden: true });
+  const data = res.data !== null ? res.data : res.text;
+  try {
+    friendly.append(card.cfg.renderer === "events" ? renderEvents(data) : card.cfg.renderer === "diff" ? renderDiffResponse(data) : card.cfg.renderer === "autofix" ? renderAutoFix(data) : renderValue(data));
+  } catch (e) { friendly.append(el("div", { class: "muted" }, "Could not format this result. Showing the raw data instead.")); }
+  raw.append(el("pre", { class: "block mono" }, res.data !== null ? JSON.stringify(res.data, null, 2) : res.text));
+  const bF = el("button", { class: "btn small on", type: "button" }, "Friendly"), bR = el("button", { class: "btn small devonly", type: "button" }, "Raw JSON");
+  const bC = el("button", { class: "btn small", type: "button", onclick: () => copyText(res.text || "") }, "Copy");
+  const bU = el("button", { class: "btn small devonly", type: "button", title: "Copy this request as a curl command", onclick: () => copyText(toCurl(res)) }, "Copy curl");
+  bF.onclick = () => { friendly.hidden = false; raw.hidden = true; bF.classList.add("on"); bR.classList.remove("on"); };
+  bR.onclick = () => { friendly.hidden = true; raw.hidden = false; bR.classList.add("on"); bF.classList.remove("on"); };
+  meta.append(el("div", { class: "tabs" }, [bF, bR, bC, bU]));
+  box.append(friendly, raw);
+  if (card.cfg.after) {
+    const n = el("div", { class: "next" }, [el("span", {}, card.cfg.after.text)]);
+    if (card.cfg.after.step) { const t = STEPS.find(s => s.id === card.cfg.after.step); n.append(el("button", { class: "btn small primary", type: "button", onclick: () => goStep(t.id) }, "Go to: " + t.short)); }
+    box.append(n);
+  }
+}
+function statusOf(d) {
+  const o = isObj(d) ? (isObj(d.run) ? d.run : d) : null; if (!o) return "";
+  for (const k of ["status", "state", "phase"]) if (typeof o[k] === "string") return o[k];
+  return "";
+}
+function buildOpCard(cfg) {
+  const [method, tpl] = cfg.key.split(" ");
+  const { fields, known } = fieldsFor(cfg.key);
+  const card = { cfg, fos: [], hasBody: fields.some(f => f.in === "body" || f.in === "rawbody"), resultBox: el("div", { class: "result" }), busy: false, pollTimer: null };
+  const root = el("div", { class: "card" });
+  root.append(el("div", { class: "ophead" }, [el("span", { class: "method " + method }, method), el("h3", {}, cfg.label), el("span", { class: "path mono" }, tpl)]));
+  if (cfg.help) root.append(el("div", { class: "help" }, cfg.help));
+  if (!known && state.spec) root.append(el("div", { class: "help" }, "This action was not found in the API description, so a basic form is shown."));
+  const form = el("div");
+  const needsInput = fields.some(f => f.required || f.in === "path");
+  const optionalWraps = [];
+  fields.forEach(f => {
+    const fo = makeField(f); card.fos.push(fo);
+    (needsInput && !f.required && f.in !== "path" ? optionalWraps : { push: w => form.append(w) }).push(fo.wrap);
+    const kind = idKindFor(cfg, f.name); if (kind) idBound.push({ fo, kind });
+  });
+  if (optionalWraps.length) form.append(el("details", { class: "more" }, [el("summary", {}, `More options (${optionalWraps.length}, optional)`), ...optionalWraps]));
+  root.append(form);
+  const runBtn = el("button", { class: "btn " + (cfg.danger ? "danger" : cfg.primary ? "primary" : ""), type: "button" }, cfg.label);
+  const acts = el("div", { class: "actions" }, [runBtn]);
+  if (cfg.example) {
+    const tgt = card.fos.find(fo => fo.f.in === "body" && (fo.f.schema.type === "string" || !fo.f.schema.type) && (cfg.example === "error" ? /error|log|trace|stack|exception|input|issue|description/i : /query|question|prompt|message|text|input|search/i).test(fo.f.name)) || card.fos.find(fo => fo.f.in === "body" && fo.f.required && fo.f.schema.type === "string");
+    if (tgt) acts.append(el("button", { class: "btn ghost", type: "button", title: "Fill in a sample so you can see how it works", onclick: () => { tgt.set(SAMPLES[cfg.example]); tgt.showError(""); tgt.input.focus(); } }, "Fill an example"));
+  }
+  if (cfg.fillExample) acts.append(el("button", { class: "btn ghost", type: "button", title: "Fill in a sample so you can see how it works",
+    onclick: () => Object.entries(cfg.fillExample).forEach(([k, v]) => { const fo = card.fos.find(x => x.f.name === k); if (fo) { fo.set(v); fo.showError(""); } }) }, "Fill an example"));
+  let auto = null;
+  if (cfg.poll) {
+    auto = el("input", { type: "checkbox", id: "auto_" + cfg.key.replace(/\W/g, "") });
+    acts.append(el("label", { for: auto.id, class: "muted", style: "font-size:13.5px" }, [auto, " auto-refresh"]));
+  }
+  root.append(acts, card.resultBox);
+  async function run(silent) {
+    if (card.busy) return null;
+    const c = collect(card.fos);
+    if (c.errors.length) { c.errors.forEach(([fo, m]) => fo.showError(m)); c.errors[0][0].input.focus(); return null; }
+    if (!silent && cfg.confirm && !window.confirm(cfg.confirm)) return null;
+    const body = card.hasBody ? (c.raw !== undefined ? c.raw : c.body) : undefined;
+    card.busy = true; runBtn.disabled = true;
+    if (!silent) runBtn.replaceChildren(el("span", { class: "spin" }), "Working…");
+    const ctrl = new AbortController(); let secs = 0, stop = null;
+    const tick = setInterval(() => { secs++; if (!silent && cfg.timeoutMs && runBtn.lastChild) runBtn.lastChild.textContent = `Working… ${secs}s`; }, 1000);
+    if (cfg.timeoutMs && !silent) { stop = el("button", { class: "btn ghost", type: "button", onclick: () => { ctrl.userCancelled = true; ctrl.abort(); } }, "Stop waiting"); acts.append(stop); }
+    const res = await request(method, tpl, { path: c.path, query: c.query, body, timeoutMs: cfg.timeoutMs, ctrl });
+    clearInterval(tick); if (stop) stop.remove();
+    card.busy = false; runBtn.disabled = false; runBtn.textContent = cfg.label;
+    showResult(card, res);
+    if (res.ok) { captureIds(cfg, res.data); if (cfg.key === "POST /index") refreshStatus(); }
+    return res;
+  }
+  card.run = run;
+  runBtn.onclick = () => run(false);
+  root.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.tagName === "TEXTAREA") { e.preventDefault(); run(false); } });
+  if (auto) {
+    auto.onchange = () => {
+      clearTimeout(card.pollTimer); if (!auto.checked) return;
+      const t0 = Date.now();
+      const tick = async () => {
+        const res = await run(true);
+        const done = res && res.ok && CONFIG.finishedWords.test(statusOf(res.data));
+        if (!auto.checked || done || !res || Date.now() - t0 > CONFIG.pollMaxMs) { auto.checked = false; if (done) toast("Finished"); return; }
+        card.pollTimer = setTimeout(tick, CONFIG.pollMs);
+      };
+      tick();
+    };
+  }
+  return root;
+}
+
+/* ========================================================================
+   Page building, status and settings
+   ====================================================================== */
+function goStep(id) {
+  state.step = id; store.set("step", id);
+  document.querySelectorAll(".stepbtn").forEach(b => { const on = b.dataset.step === id; b.classList.toggle("active", on); if (on) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
+  document.querySelectorAll(".panel").forEach(p => { p.hidden = p.id !== "panel-" + id; });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function buildSteps() {
+  idBound.length = 0;
+  const nav = $("#steps"), content = $("#content"); nav.replaceChildren(); content.replaceChildren();
+  STEPS.forEach((st, i) => {
+    nav.append(el("button", { class: "stepbtn", type: "button", "data-step": st.id, onclick: () => goStep(st.id) }, [el("span", { class: "num" }, String(i + 1)), el("span", { class: "stt" }, st.short)]));
+    const panel = el("section", { class: "panel", id: "panel-" + st.id, hidden: true }, [el("h2", {}, st.title), el("p", { class: "intro" }, st.intro)]);
+    st.ops.forEach(op => panel.append(buildOpCard(op)));
+    panel.append(el("div", { class: "foot" }, [
+      i > 0 ? el("button", { class: "btn", type: "button", onclick: () => goStep(STEPS[i - 1].id) }, "← Back") : el("span"),
+      i < STEPS.length - 1 ? el("button", { class: "btn primary", type: "button", onclick: () => goStep(STEPS[i + 1].id) }, "Next step →") : el("span")]));
+    content.append(panel);
+  });
+  syncIds(); goStep(STEPS.some(s => s.id === state.step) ? state.step : "autofix");
+}
+function setPill(id, cls, text) { const p = $("#" + id); p.className = "pill " + cls; p.textContent = text; }
+function banner(kind, html) { const b = $("#banners"); b.replaceChildren(); if (html) b.append(el("div", { class: kind }, html)); }
+async function refreshStatus() {
+  if (!state.base && !location.protocol.startsWith("http")) { setPill("pillApi", "warn", "API: set address"); return; }
+  const [h, r, ix] = await Promise.all([request("GET", "/health"), request("GET", "/ready"), request("GET", "/index/status")]);
+  if (h.netError) { setPill("pillApi", "bad", "API: unreachable"); setPill("pillReady", "", "Ready: unknown"); setPill("pillIndex", "", "Index: unknown"); return; }
+  setPill("pillApi", h.ok ? "good" : "bad", h.ok ? "API: online" : "API: error " + h.status);
+  if (r.ok) { const d = r.data, no = (isObj(d) && (d.ready === false || /not|fail|false/i.test(String(d.status || "")))); setPill("pillReady", no ? "warn" : "good", no ? "Not ready yet" : "Ready"); }
+  else setPill("pillReady", "bad", "Not ready");
+  if (ix.ok) { const st = statusOf(ix.data); const n = isObj(ix.data) ? (ix.data.indexed_files ?? ix.data.files ?? ix.data.chunks ?? ix.data.count) : null;
+    setPill("pillIndex", /(fail|error)/i.test(st) ? "bad" : /(running|progress|index)/i.test(st) && !/(indexed|complete)/i.test(st) ? "warn" : st ? "good" : "", "Index: " + (st || "available") + (typeof n === "number" ? ` (${n})` : "")); }
+  else setPill("pillIndex", "", "Index: unknown");
+}
+async function loadSpec() {
+  const r = await request("GET", "/openapi.json");
+  state.spec = r.ok && r.data && r.data.paths ? r.data : null;
+  return r;
+}
+async function connect() {
+  $("#linkDocs").href = (state.base || "") + "/docs";
+  if (!state.base && !location.protocol.startsWith("http")) {
+    banner("warn", "This page was opened as a file, so it does not know where your API is. Open Settings and enter the API address, for example http://your-server:8000.");
+  }
+  const r = await loadSpec();
+  if (r.netError) banner("bad", `Could not reach the API at ${state.base || "(no address set)"}. Check the address in Settings and that the server is running. The forms below will still appear, but they will not work until the connection is fixed.`);
+  else if (!state.spec) banner("warn", "Connected, but the API description (/openapi.json) could not be read. Basic forms are shown. Field names may need to be typed as JSON.");
+  else banner("", null);
+  const probe = await request("GET", "/index/status");
+  if (probe.status === 401 || probe.status === 503) banner("warn", el("div", {}, [probe.status === 401 ? "This server needs an access code. " : "The server has no access code configured yet. ",
+    el("button", { class: "btn small primary", type: "button", onclick: () => $("#btnSettings").click() }, "Open Settings")]));
+  else if (/^http:\/\//i.test(state.base) && !/localhost|127\.0\.0\.1/.test(state.base) && state.apiKey) banner("warn", "Your access code is being sent over plain http. Use https for any server that is not on your own computer.");
+  buildSteps(); refreshStatus();
+}
+function openDialog(d) { if (d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+function closeDialog(d) { if (d.close) d.close(); else d.removeAttribute("open"); }
+
+$("#btnRefresh").onclick = () => { refreshStatus(); toast("Checking status"); };
+$("#btnHelp").onclick = () => openDialog($("#dlgHelp"));
+$("#btnCloseHelp").onclick = () => closeDialog($("#dlgHelp"));
+$("#btnSettings").onclick = () => { $("#setBase").value = state.base; $("#setKey").value = state.apiKey; $("#setRemember").checked = store.get("remember") === "1"; $("#setDev").checked = document.body.classList.contains("dev"); openDialog($("#dlgSettings")); };
+$("#btnCloseSettings").onclick = () => closeDialog($("#dlgSettings"));
+$("#btnSaveSettings").onclick = () => {
+  const typed = $("#setBase").value.trim().replace(/\/+$/, "");
+  if (typed && !/^https?:\/\//i.test(typed)) { toast("The API address must start with http:// or https://"); return; }
+  state.base = typed || (location.protocol.startsWith("http") ? location.origin : "");
+  state.apiKey = $("#setKey").value.trim(); store.set("base", typed);
+  store.set("remember", $("#setRemember").checked ? "1" : ""); kstore.set(state.apiKey, $("#setRemember").checked);
+  store.set("dev", $("#setDev").checked ? "1" : ""); document.body.classList.toggle("dev", $("#setDev").checked);
+  closeDialog($("#dlgSettings")); connect();
+};
+[["idRun", "runId"], ["idFix", "fixId"], ["idTest", "testId"]].forEach(([inp, k]) => {
+  $("#" + inp).addEventListener("input", e => { state[k] = e.target.value.trim(); store.set(k, state[k]); idBound.forEach(({ fo, kind }) => { if (kind + "Id" === k && state[k]) fo.set(state[k]); }); });
+});
+$("#btnClearIds").onclick = () => { state.runId = state.fixId = state.testId = ""; ["runId", "fixId", "testId"].forEach(k => store.set(k, "")); idBound.forEach(({ fo }) => fo.set("")); syncIds(); toast("IDs cleared"); };
+
+/* First-visit guide */
+(function startHere() {
+  if (store.get("hideStart") === "1") return;
+  const box = el("div", { class: "banner" }, el("div", { class: "start" }, [
+    el("strong", {}, "New here? Start like this."),
+    el("ol", {}, [el("li", {}, "Open Settings and enter the access code your server was set up with."), el("li", {}, "Tests failing? Use step 1. The agent tries a fix on a private copy and re-runs your tests."),
+      el("li", {}, "Want to explore first? Index your repository (step 2), then ask questions (step 3)."), el("li", {}, "Review any fix before it is applied. You can always undo it.")]),
+    el("button", { class: "btn small", type: "button", onclick: () => { store.set("hideStart", "1"); box.remove(); } }, "Hide this")]));
+  $("#banners").after(box);
+})();
+
+connect();
+})();
+</script>
+</body>
+</html>
