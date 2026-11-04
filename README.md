@@ -80,7 +80,6 @@ curl -H "X-API-Key: $AGENT_API_KEY" -H "Content-Type: application/json" \
        "test_command": "python -m unittest discover -s tests"}'
 ```
 
-Interactive Web UI: `http://localhost:8000/ui` (enter access code in Settings)
 Interactive docs: `http://localhost:8000/docs` (use the **Authorize** button with your key).
 
 ## Security
@@ -190,7 +189,6 @@ The agent is fully containerized with production-grade security, persistent stor
 
 The platform is deployed live on an **AWS EC2 instance** (`t2.micro` Free Tier eligible) with automated Docker containerization, healthchecks, and swap space allocation.
 
-- **Live Web UI**: [http://13.239.137.215:8000/ui](http://13.239.137.215:8000/ui) (Enter your API key under Settings)
 - **Live Swagger API**: [http://13.239.137.215:8000/docs](http://13.239.137.215:8000/docs)
 - **Live Health Probe**: [http://13.239.137.215:8000/health](http://13.239.137.215:8000/health)
 - **Live Readiness Check**: [http://13.239.137.215:8000/ready](http://13.239.137.215:8000/ready)

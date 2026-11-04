@@ -3,7 +3,6 @@ import logging
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router as api_router, public_router
 from app.security import require_api_key
@@ -53,7 +52,6 @@ def _warn_if_insecure() -> None:
 # Health probes are public; everything else requires a valid X-API-Key.
 app.include_router(public_router)
 app.include_router(api_router, dependencies=[Depends(require_api_key)])
-app.mount("/ui", StaticFiles(directory="app/static", html=True), name="ui")
 
 
 @app.get("/", tags=["Root"])
