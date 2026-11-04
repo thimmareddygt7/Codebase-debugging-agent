@@ -1,8 +1,10 @@
 import logging
+from pathlib import Path
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router as api_router, public_router
 from app.security import require_api_key
@@ -53,9 +55,15 @@ def _warn_if_insecure() -> None:
 app.include_router(public_router)
 app.include_router(api_router, dependencies=[Depends(require_api_key)])
 
+_static_dir = Path(__file__).parent / "static"
+if _static_dir.is_dir():
+    app.mount("/ui", StaticFiles(directory=_static_dir, html=True), name="ui")
+
 
 @app.get("/", tags=["Root"])
 def root():
+    if _static_dir.is_dir():
+        return RedirectResponse(url="/ui/")
     return RedirectResponse(url="/docs")
 
 
