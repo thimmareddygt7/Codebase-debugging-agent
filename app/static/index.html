@@ -830,21 +830,42 @@ function buildChat() {
   const sendBtn = el("button", { class: "btn primary", type: "button" }, "Send");
   const freshBtn = el("button", { class: "btn ghost", type: "button", title: "Forget this conversation and start again" }, "New chat");
   const addMsg = (who, kids) => { const m = el("div", { class: "msg " + who }, kids); log.append(m); log.scrollTop = log.scrollHeight; return m; };
+  const PROJECT_INTRO = "This is the **Codebase Debugging Agent** — an AI tool for Python repositories. It can:\n• Answer questions about your code (how things work, where things are defined)\n• Automatically investigate errors and stack traces\n• Propose and apply code fixes — with human approval before anything changes\n• Run an auto-fix loop: reproduce a failing test, patch a copy, verify the fix passes\n\nIndex your repository first (Step 3), then ask away!";
+  const CANNED = {
+    "What is this project for?": PROJECT_INTRO,
+    "What can this agent do?": PROJECT_INTRO,
+    "How does this work?": PROJECT_INTRO,
+  };
   const welcome = () => {
     log.replaceChildren();
-    addMsg("bot", "Hi! Ask me anything about the code that has been indexed. Try one of these, or type your own question.");
-    log.append(el("div", { class: "chips" }, ["What is this project for?", "Where is security or login handled?", "How does the auto-fix work?"].map(q => el("button", { class: "chip", type: "button", onclick: () => ask(q) }, q))));
+    addMsg("bot", "Hi! Ask me anything about the indexed code. Try one of these, or type your own question.");
+    log.append(el("div", { class: "chips" }, ["What is this project for?", "How does the auto-fix loop work?", "Where is the vector search code?", "How are API keys checked?"].map(q => el("button", { class: "chip", type: "button", onclick: () => ask(q) }, q))));
   };
   async function ask(text) {
     text = String(text || box.value).trim();
     if (!text || busy) return;
+    // Check canned answers first (for general project questions that don't need the index)
+    if (CANNED[text]) {
+      log.querySelectorAll(".chips").forEach(c => c.remove());
+      addMsg("me", text);
+      addMsg("bot", [el("div", { class: "prose" }, CANNED[text])]);
+      box.value = ""; box.focus(); return;
+    }
     busy = true; sendBtn.disabled = true; box.value = "";
     log.querySelectorAll(".chips").forEach(c => c.remove());
     addMsg("me", text);
     const wait = addMsg("bot", [el("span", { class: "spin" }), " Thinking…"]);
     const res = await request("POST", "/ask", { body: { question: text, thread_id: thread } });
     wait.remove(); busy = false; sendBtn.disabled = false; box.focus();
-    if (!res.ok) { addMsg("bot err", errorBox(res)); return; }
+    if (!res.ok) {
+      let errMsg;
+      if (res.netError === "timeout") errMsg = "⏱ The server took too long to respond. It may still be working — try again in a moment.";
+      else if (res.netError) errMsg = "🔌 Cannot reach the API. Check that the server is running and your Settings are correct.";
+      else if (res.status === 401) errMsg = "🔑 Access denied. Open Settings and enter the correct access code.";
+      else if (res.status >= 500) errMsg = "⚠️ Server error. The API hit a problem — check the server logs.";
+      else errMsg = "❌ Request failed (HTTP " + res.status + "). Check Settings or try again.";
+      addMsg("bot err", errMsg); return;
+    }
     const d = isObj(res.data) ? res.data : {};
     const answer = String(d.final_answer || "").trim();
     if (!answer) { addMsg("bot err", d.error ? String(d.error) : "I did not get an answer. Make sure a repository is indexed (Step 3), then try again."); return; }
