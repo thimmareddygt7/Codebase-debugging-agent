@@ -110,6 +110,16 @@ dialog dt{font-weight:600;margin-top:8px}
 dialog dd{margin:0;color:var(--muted)}
 #toast{position:fixed;top:68px;left:50%;transform:translateX(-50%);background:#1b2230;color:#fff;padding:8px 14px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;max-width:90%}
 #toast.show{opacity:.95}
+.chat{display:flex;flex-direction:column;gap:10px}
+.chatlog{display:flex;flex-direction:column;gap:10px;min-height:280px;max-height:58vh;overflow:auto;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.msg{max-width:88%;padding:10px 12px;border-radius:14px;overflow-wrap:anywhere}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);white-space:pre-wrap}
+.msg.bot{align-self:flex-start;background:var(--code)}.msg.err{background:var(--bad-bg);color:var(--bad)}
+.msg .note{margin-top:6px;font-size:13px;color:var(--warn)}.msg details{margin-top:6px}.msg .btn{margin-top:8px}
+.srcs{margin:6px 0 0 18px;padding:0;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid var(--border);background:var(--card);border-radius:999px;padding:6px 12px;cursor:pointer}.chip:hover{border-color:var(--accent)}
+.chatbar{display:flex;gap:8px;align-items:flex-end}.chatbox{flex:1;resize:vertical;min-height:48px;max-height:160px;border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--card)}
+.chatbtns{display:flex;flex-direction:column;gap:6px}
 body:not(.dev) .ophead .method,body:not(.dev) .ophead .path,body:not(.dev) .devonly{display:none}
 .stats{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.verdict{border-radius:10px;padding:10px 12px;margin-bottom:10px;font-weight:600}
 .verdict.good{background:var(--good-bg);color:var(--good)}.verdict.warn{background:var(--warn-bg);color:var(--warn)}.verdict.bad{background:var(--bad-bg);color:var(--bad)}
@@ -171,7 +181,7 @@ body:not(.dev) .ophead .method,body:not(.dev) .ophead .path,body:not(.dev) .devo
   <h2>How this works</h2>
   <p class="muted" style="margin-top:0">Work through the steps on the left, in order. Each step has a short explanation and a form.</p>
   <dl>
-    <dt>Fix automatically</dt><dd>The agent reproduces a failing test, tries a fix on a private copy of your code, and re-runs your tests. Your real code is not changed.</dd>
+    <dt>Fix automatically</dt><dd>The agent reproduces a failing test, tries a fix on a private copy of your code, and re-runs the tests. Your real code is not changed.</dd>
     <dt>Index</dt><dd>The agent reads your repository and stores it so it can be searched. Do this once per repository.</dd>
     <dt>Run</dt><dd>One investigation by the agent. It gets an ID so you can look at its result and its steps later.</dd>
     <dt>Fix</dt><dd>A proposed code change. It gets its own ID. Nothing changes until you apply it.</dd>
@@ -214,14 +224,16 @@ const CONFIG = {
    STEPS: what appears in the UI (plain-English text lives here)
    ====================================================================== */
 const STEPS = [
-  { id: "autofix", short: "Fix failing tests", title: "1. Fix failing tests automatically",
+  { id: "chat", short: "Chat with your code", title: "1. Chat with your code", chat: true, ops: [],
+    intro: "Ask questions in plain English, one after another. I remember the conversation, so you can ask follow-ups. This is the easiest place to start." },
+  { id: "autofix", short: "Fix failing tests", title: "2. Fix failing tests automatically",
     intro: "Have tests that fail? The agent reproduces the failure, tries a fix on a private copy of your code, and re-runs your tests. Your real code is never changed in this step. If a fix works, you review it before anything is applied.",
     ops: [
       { key: "POST /debug/fix", label: "Fix it automatically", primary: true, renderer: "autofix", timeoutMs: CONFIG.autoFixTimeoutMs,
         help: "Describe the bug in plain words and give the command that runs your failing tests. This can take several minutes, so keep this tab open.",
         fillExample: { problem_description: "The second page of results shows the wrong items.", target_dir: "benchmarks/bugs/pagination_off_by_one/repo", test_command: "python -m unittest discover -s tests" } },
     ] },
-  { id: "index", short: "Index a repository", title: "2. Index a repository",
+  { id: "index", short: "Index a repository", title: "3. Index a repository",
     intro: "The agent can only answer questions about code it has read. Indexing reads your repository and stores it so it can be searched. Do this once per repository.",
     ops: [
       { key: "POST /index", label: "Start indexing", primary: true,
@@ -230,7 +242,7 @@ const STEPS = [
       { key: "GET /index/status", label: "Check indexing progress", poll: true,
         help: "Run this until it says the index is ready or finished. Tick auto-refresh to keep checking." },
     ] },
-  { id: "ask", short: "Ask or search the code", title: "3. Ask questions or search the code",
+  { id: "ask", short: "Ask or search the code", title: "4. Ask questions or search the code",
     intro: "Try these before investigating an error. They show whether the agent understands your code.",
     ops: [
       { key: "POST /ask", label: "Ask the agent", primary: true, example: "question",
@@ -238,7 +250,7 @@ const STEPS = [
       { key: "POST /search", label: "Search the code", example: "search",
         help: "Find code related to a topic. This returns matching code only, without a written answer." },
     ] },
-  { id: "debug", short: "Investigate an error", title: "4. Investigate an error",
+  { id: "debug", short: "Investigate an error", title: "5. Investigate an error",
     intro: "Paste an error message or stack trace. The agent looks through the indexed code, finds the likely cause, and records what it did.",
     ops: [
       { key: "POST /debug", label: "Investigate this error", primary: true, example: "error", captures: ["run"],
@@ -249,7 +261,7 @@ const STEPS = [
       { key: "GET /agent/runs/{run_id}/events", label: "See what the agent did, step by step", idKey: "run", renderer: "events", poll: true,
         help: "A timeline of the agent's steps. Tick auto-refresh to watch a run that is still going." },
     ] },
-  { id: "fix", short: "Review a fix", title: "5. Propose and review a fix",
+  { id: "fix", short: "Review a fix", title: "6. Propose and review a fix",
     intro: "Ask for a code change, read exactly what would change, then approve or reject it. Nothing is applied in this step.",
     ops: [
       { key: "POST /fix/propose", label: "Propose a fix", primary: true, captures: ["fix"],
@@ -264,7 +276,7 @@ const STEPS = [
       { key: "POST /fix/{fix_id}/reject", label: "Reject this fix", idKey: "fix",
         help: "You are saying the change is wrong or not wanted." },
     ] },
-  { id: "apply", short: "Apply, test, undo", title: "6. Apply, test and undo",
+  { id: "apply", short: "Apply, test, undo", title: "7. Apply, test and undo",
     intro: "Applying changes the code. Run the tests afterwards. If something looks wrong, roll back.",
     ops: [
       { key: "POST /fix/{fix_id}/apply", label: "Apply the approved fix", idKey: "fix", danger: true,
@@ -278,7 +290,7 @@ const STEPS = [
         confirm: "This will undo the applied change. Continue?",
         help: "Puts the code back the way it was before the fix." },
     ] },
-  { id: "history", short: "History and quality", title: "7. History and quality",
+  { id: "history", short: "History and quality", title: "8. History and quality",
     intro: "A record of what happened and how well the agent performs.",
     ops: [
       { key: "GET /audit/logs", label: "Audit log", help: "Who proposed, approved and applied what, and when." },
@@ -339,7 +351,7 @@ const state = {
   apiKey: kstore.get(),
   spec: null,
   runId: store.get("runId"), fixId: store.get("fixId"), testId: store.get("testId"),
-  step: store.get("step") || "autofix",
+  step: store.get("step") || "chat",
 };
 const idBound = [];   // form fields that follow the current IDs
 if (store.get("dev") === "1") document.body.classList.add("dev");
@@ -810,19 +822,60 @@ function goStep(id) {
   document.querySelectorAll(".panel").forEach(p => { p.hidden = p.id !== "panel-" + id; });
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
+function buildChat() {
+  const newThread = () => "chat-" + Math.random().toString(36).slice(2, 10);
+  let thread = newThread(), busy = false;
+  const log = el("div", { class: "chatlog", role: "log", "aria-live": "polite" });
+  const box = el("textarea", { class: "chatbox", rows: "2", maxlength: "2000", "aria-label": "Your question", placeholder: "Ask anything about your code…  (Enter to send, Shift+Enter for a new line)" });
+  const sendBtn = el("button", { class: "btn primary", type: "button" }, "Send");
+  const freshBtn = el("button", { class: "btn ghost", type: "button", title: "Forget this conversation and start again" }, "New chat");
+  const addMsg = (who, kids) => { const m = el("div", { class: "msg " + who }, kids); log.append(m); log.scrollTop = log.scrollHeight; return m; };
+  const welcome = () => {
+    log.replaceChildren();
+    addMsg("bot", "Hi! Ask me anything about the code that has been indexed. Try one of these, or type your own question.");
+    log.append(el("div", { class: "chips" }, ["What is this project for?", "Where is security or login handled?", "How does the auto-fix work?"].map(q => el("button", { class: "chip", type: "button", onclick: () => ask(q) }, q))));
+  };
+  async function ask(text) {
+    text = String(text || box.value).trim();
+    if (!text || busy) return;
+    busy = true; sendBtn.disabled = true; box.value = "";
+    log.querySelectorAll(".chips").forEach(c => c.remove());
+    addMsg("me", text);
+    const wait = addMsg("bot", [el("span", { class: "spin" }), " Thinking…"]);
+    const res = await request("POST", "/ask", { body: { question: text, thread_id: thread } });
+    wait.remove(); busy = false; sendBtn.disabled = false; box.focus();
+    if (!res.ok) { addMsg("bot err", errorBox(res)); return; }
+    const d = isObj(res.data) ? res.data : {};
+    const answer = String(d.final_answer || "").trim();
+    if (!answer) { addMsg("bot err", d.error ? String(d.error) : "I did not get an answer. Make sure a repository is indexed (Step 3), then try again."); return; }
+    const kids = [el("div", { class: "prose" }, answer)];
+    if (d.context_verified === false) kids.push(el("div", { class: "note" }, "I could not fully confirm this against the code, so please double-check it."));
+    const files = Array.isArray(d.investigated_files) ? d.investigated_files : [];
+    if (files.length) kids.push(el("details", {}, [el("summary", {}, `Code I looked at (${files.length})`), el("ul", { class: "mono srcs" }, files.map(f => el("li", {}, String(f))))]));
+    kids.push(el("button", { class: "btn small", type: "button", onclick: () => copyText(answer) }, "Copy answer"));
+    addMsg("bot", kids);
+  }
+  sendBtn.onclick = () => ask();
+  box.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } };
+  freshBtn.onclick = () => { if (busy) return; thread = newThread(); welcome(); box.focus(); };
+  welcome();
+  return el("div", { class: "chat" }, [log, el("div", { class: "chatbar" }, [box, el("div", { class: "chatbtns" }, [sendBtn, freshBtn])]),
+    el("div", { class: "hint" }, "Tip: index a repository first (Step 3) so there is code to look at. Answers come from the code I find, so check anything important.")]);
+}
 function buildSteps() {
   idBound.length = 0;
   const nav = $("#steps"), content = $("#content"); nav.replaceChildren(); content.replaceChildren();
   STEPS.forEach((st, i) => {
     nav.append(el("button", { class: "stepbtn", type: "button", "data-step": st.id, onclick: () => goStep(st.id) }, [el("span", { class: "num" }, String(i + 1)), el("span", { class: "stt" }, st.short)]));
     const panel = el("section", { class: "panel", id: "panel-" + st.id, hidden: true }, [el("h2", {}, st.title), el("p", { class: "intro" }, st.intro)]);
+    if (st.chat) panel.append(buildChat());
     st.ops.forEach(op => panel.append(buildOpCard(op)));
     panel.append(el("div", { class: "foot" }, [
       i > 0 ? el("button", { class: "btn", type: "button", onclick: () => goStep(STEPS[i - 1].id) }, "← Back") : el("span"),
       i < STEPS.length - 1 ? el("button", { class: "btn primary", type: "button", onclick: () => goStep(STEPS[i + 1].id) }, "Next step →") : el("span")]));
     content.append(panel);
   });
-  syncIds(); goStep(STEPS.some(s => s.id === state.step) ? state.step : "autofix");
+  syncIds(); goStep(STEPS.some(s => s.id === state.step) ? state.step : "chat");
 }
 function setPill(id, cls, text) { const p = $("#" + id); p.className = "pill " + cls; p.textContent = text; }
 function banner(kind, html) { const b = $("#banners"); b.replaceChildren(); if (html) b.append(el("div", { class: kind }, html)); }
@@ -887,8 +940,8 @@ $("#btnClearIds").onclick = () => { state.runId = state.fixId = state.testId = "
   if (store.get("hideStart") === "1") return;
   const box = el("div", { class: "banner" }, el("div", { class: "start" }, [
     el("strong", {}, "New here? Start like this."),
-    el("ol", {}, [el("li", {}, "Open Settings and enter the access code your server was set up with."), el("li", {}, "Tests failing? Use step 1. The agent tries a fix on a private copy and re-runs your tests."),
-      el("li", {}, "Want to explore first? Index your repository (step 2), then ask questions (step 3)."), el("li", {}, "Review any fix before it is applied. You can always undo it.")]),
+    el("ol", {}, [el("li", {}, "Open Settings and enter the access code your server was set up with."), el("li", {}, "Just want answers? Index your repository (step 3), then open Chat (step 1) and ask."),
+      el("li", {}, "Tests failing? Use step 2. The agent tries a fix on a private copy and re-runs your tests."), el("li", {}, "Review any fix before it is applied. You can always undo it.")]),
     el("button", { class: "btn small", type: "button", onclick: () => { store.set("hideStart", "1"); box.remove(); } }, "Hide this")]));
   $("#banners").after(box);
 })();
